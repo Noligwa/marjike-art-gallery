@@ -6,6 +6,7 @@ import artFigure from "@/assets/art-figure.jpg";
 import artWindow from "@/assets/art-window.jpg";
 import artPears from "@/assets/art-pears.jpg";
 import artDusk from "@/assets/art-dusk.jpg";
+import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
