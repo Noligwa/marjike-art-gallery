@@ -6,6 +6,7 @@ import artFigure from "@/assets/art-figure.jpg";
 import artWindow from "@/assets/art-window.jpg";
 import artPears from "@/assets/art-pears.jpg";
 import artDusk from "@/assets/art-dusk.jpg";
+import artistPortrait from "@/assets/artist-portrait.jpg";
 import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -202,18 +203,34 @@ function Index() {
       {/* About */}
       <section id="about" className="bg-card">
         <div className="mx-auto max-w-[1200px] px-6 py-24 sm:px-10">
-          <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-            <div className="max-w-[30ch]">
+          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <figure className="artwork-card mx-auto max-w-[420px] rounded-xl bg-paper p-3 ring-1 ring-black/5 lg:mx-0">
+              <img
+                src={artistPortrait}
+                alt="Portrait of Marjike in her Porto studio, wearing a linen shirt in warm afternoon light"
+                width={1024}
+                height={1280}
+                loading="lazy"
+                className="aspect-[4/5] w-full rounded-[10px] object-cover outline-1 -outline-offset-1 outline-black/5"
+              />
+              <figcaption className="px-1 pb-1 pt-4">
+                <h3 className="font-display text-lg font-medium tracking-tight">
+                  Marjike
+                </h3>
+                <p className="mt-1 text-sm text-ink/60">
+                  In the studio · Porto, late afternoon
+                </p>
+              </figcaption>
+            </figure>
+            <div>
               <p className="mb-6 text-xs uppercase tracking-[0.3em] text-sun">
                 About the artist
               </p>
-              <h2 className="font-display text-4xl font-medium leading-[1.08] tracking-tight text-balance sm:text-5xl">
+              <h2 className="max-w-[30ch] font-display text-4xl font-medium leading-[1.08] tracking-tight text-balance sm:text-5xl">
                 I work slowly, in small batches, in the hours when the light is
                 most honest.
               </h2>
-            </div>
-            <div>
-              <p className="text-base leading-relaxed text-ink/70 text-pretty sm:text-lg">
+              <p className="mt-6 text-base leading-relaxed text-ink/70 text-pretty sm:text-lg">
                 Marjike has painted in her Porto studio since 2019, building a
                 quiet body of work around light, gesture, and the warm colours
                 of a room at the end of the day. Her pieces have shown in small
