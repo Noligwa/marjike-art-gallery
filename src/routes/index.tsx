@@ -6,6 +6,7 @@ import artFigure from "@/assets/art-figure.jpg";
 import artWindow from "@/assets/art-window.jpg";
 import artPears from "@/assets/art-pears.jpg";
 import artDusk from "@/assets/art-dusk.jpg";
+import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -123,32 +124,44 @@ function Index() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-[1200px] px-6 pb-16 pt-8 sm:px-10 sm:pt-14">
-        <p className="animate-fade-up mb-6 text-xs uppercase tracking-[0.3em] text-sun">
-          Light studies · Mixed media · 2019 — Now
-        </p>
-        <h1 className="animate-fade-up max-w-[20ch] font-display text-6xl font-medium leading-[1.02] tracking-tight text-balance sm:text-7xl lg:text-8xl">
-          I paint the way <span className="italic text-sun">sunlight</span>{" "}
-          lingers on a wall.
-        </h1>
-        <p className="animate-fade-up mt-8 max-w-[52ch] text-base leading-relaxed text-ink/70 text-pretty sm:text-lg">
-          Warm, gestural work made in a small studio in Porto. Each piece
-          begins with a single window and ends somewhere quieter than it
-          started.
-        </p>
-        <div className="animate-fade-up mt-10 flex flex-wrap items-center gap-4">
-          <a
-            href="#work"
-            className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper ring-1 ring-inset ring-ink hover:bg-sun hover:ring-sun"
-          >
-            View the gallery
-          </a>
-          <a
-            href="#commission"
-            className="rounded-full border border-ink/20 px-6 py-3 text-sm font-medium text-ink/80 hover:border-ink"
-          >
-            Commission a piece
-          </a>
+      <section className="relative overflow-hidden">
+        <video
+          src={studioVideo.url}
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-paper/80" aria-hidden="true" />
+        <div className="relative mx-auto max-w-[1200px] px-6 pb-16 pt-8 sm:px-10 sm:pt-14">
+          <p className="animate-fade-up mb-6 text-xs uppercase tracking-[0.3em] text-sun">
+            Light studies · Mixed media · 2019 — Now
+          </p>
+          <h1 className="animate-fade-up max-w-[20ch] font-display text-6xl font-medium leading-[1.02] tracking-tight text-balance sm:text-7xl lg:text-8xl">
+            I paint the way <span className="italic text-sun">sunlight</span>{" "}
+            lingers on a wall.
+          </h1>
+          <p className="animate-fade-up mt-8 max-w-[52ch] text-base leading-relaxed text-ink/70 text-pretty sm:text-lg">
+            Warm, gestural work made in a small studio in Porto. Each piece
+            begins with a single window and ends somewhere quieter than it
+            started.
+          </p>
+          <div className="animate-fade-up mt-10 flex flex-wrap items-center gap-4">
+            <a
+              href="#work"
+              className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper ring-1 ring-inset ring-ink hover:bg-sun hover:ring-sun"
+            >
+              View the gallery
+            </a>
+            <a
+              href="#commission"
+              className="rounded-full border border-ink/20 px-6 py-3 text-sm font-medium text-ink/80 hover:border-ink"
+            >
+              Commission a piece
+            </a>
+          </div>
         </div>
       </section>
 
