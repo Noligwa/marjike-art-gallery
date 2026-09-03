@@ -1,0 +1,557 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  BUCKET,
+  artworksQuery,
+  siteContentQuery,
+  type Artwork,
+  type ArtworkWithUrl,
+  type SiteContentRow,
+} from "@/lib/gallery";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+
+export const Route = createFileRoute("/admin")({
+  head: () => ({
+    meta: [
+      { title: "Studio panel — Marjike" },
+      {
+        name: "description",
+        content: "Private studio panel for managing the Marjike collection.",
+      },
+      { name: "robots", content: "noindex" },
+      { property: "og:title", content: "Studio panel — Marjike" },
+      {
+        property: "og:description",
+        content: "Private studio panel for managing the Marjike collection.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: AdminPage,
+});
+
+const emptyForm = {
+  title: "",
+  medium: "",
+  dimensions: "",
+  year: String(new Date().getFullYear()),
+  description: "",
+  alt_text: "",
+  sort_order: 0,
+  published: true,
+};
+
+function AdminPage() {
+  const { session, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return <Shell>Loading…</Shell>;
+  }
+  if (!session) {
+    return <SignIn />;
+  }
+  if (!isAdmin) {
+    return <ClaimAdmin email={session.user.email ?? ""} />;
+  }
+  return <AdminDashboard email={session.user.email ?? ""} />;
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-paper px-6 py-16 font-body text-ink">
+      <div className="mx-auto w-full max-w-[900px]">{children}</div>
+    </div>
+  );
+}
+
+function SignIn() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    const fn =
+      mode === "signin"
+        ? supabase.auth.signInWithPassword({ email, password })
+        : supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: `${window.location.origin}/admin` },
+          });
+    const { error } = await fn;
+    setBusy(false);
+    if (error) toast.error(error.message);
+    else if (mode === "signup")
+      toast.success("Account created. Check your email if confirmation is on.");
+  };
+
+  return (
+    <Shell>
+      <div className="mx-auto max-w-[420px] rounded-2xl bg-card p-8 ring-1 ring-black/5">
+        <p className="mb-3 text-xs uppercase tracking-[0.3em] text-sun">
+          Studio
+        </p>
+        <h1 className="font-display text-3xl font-medium tracking-tight">
+          {mode === "signin" ? "Sign in" : "Create your account"}
+        </h1>
+        <form onSubmit={submit} className="mt-8 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              required
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              required
+              minLength={6}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <Button type="submit" disabled={busy} className="w-full">
+            {mode === "signin" ? "Sign in" : "Sign up"}
+          </Button>
+        </form>
+        <button
+          type="button"
+          className="mt-5 text-sm text-ink/60 underline-offset-4 hover:text-sun hover:underline"
+          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+        >
+          {mode === "signin"
+            ? "First time here? Create an account"
+            : "Already have an account? Sign in"}
+        </button>
+        <div className="mt-8 border-t border-ink/10 pt-5">
+          <Link to="/" className="text-sm text-ink/60 hover:text-sun">
+            ← Back to the site
+          </Link>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+function ClaimAdmin({ email }: { email: string }) {
+  const [busy, setBusy] = useState(false);
+
+  const claim = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.rpc("claim_first_admin");
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    if (data) {
+      toast.success("You're the studio admin now.");
+      window.location.reload();
+    } else {
+      toast.error("An admin already exists for this studio.");
+    }
+  };
+
+  return (
+    <Shell>
+      <div className="mx-auto max-w-[520px] rounded-2xl bg-card p-8 ring-1 ring-black/5">
+        <h1 className="font-display text-3xl font-medium tracking-tight">
+          Almost there
+        </h1>
+        <p className="mt-4 text-ink/70">
+          Signed in as {email}, but this account isn't the studio admin yet. If
+          this is the artist's account and no admin exists, claim it below.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <Button onClick={claim} disabled={busy}>
+            Claim studio admin
+          </Button>
+          <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+function AdminDashboard({ email }: { email: string }) {
+  const qc = useQueryClient();
+  const { data: artworks = [] } = useQuery(artworksQuery(true));
+  const { data: contentRows = [] } = useQuery(siteContentQuery());
+  const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["artworks"] });
+    void qc.invalidateQueries({ queryKey: ["site-content"] });
+  };
+
+  return (
+    <Shell>
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-sun">Studio</p>
+          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight">
+            Manage the collection
+          </h1>
+          <p className="mt-2 text-sm text-ink/60">{email}</p>
+        </div>
+        <div className="flex gap-3">
+          <Link to="/">
+            <Button variant="outline">View site</Button>
+          </Link>
+          <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+
+      <section className="rounded-2xl bg-card p-6 ring-1 ring-black/5">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="font-display text-2xl font-medium tracking-tight">
+            Artworks ({artworks.length})
+          </h2>
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setCreating(true);
+            }}
+          >
+            Add a piece
+          </Button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {artworks.map((work) => (
+            <div
+              key={work.id}
+              className="flex gap-4 rounded-xl bg-paper p-3 ring-1 ring-black/5"
+            >
+              <img
+                src={work.imageUrl}
+                alt={work.alt_text || work.title}
+                className="size-20 shrink-0 rounded-lg object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-lg">{work.title}</p>
+                <p className="truncate text-sm text-ink/60">
+                  {[work.medium, work.dimensions].filter(Boolean).join(" · ")}
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-widest text-clay">
+                  #{work.sort_order} ·{" "}
+                  {work.published ? "Published" : "Hidden"}
+                </p>
+                <div className="mt-2 flex gap-3 text-sm">
+                  <button
+                    className="text-sun hover:underline"
+                    onClick={() => {
+                      setCreating(false);
+                      setEditing(work);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <DeleteButton artwork={work} onDone={refresh} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {(creating || editing) && (
+        <ArtworkForm
+          key={editing?.id ?? "new"}
+          artwork={editing}
+          onClose={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+          onSaved={refresh}
+        />
+      )}
+
+      <SiteContentEditor rows={contentRows} onSaved={refresh} />
+    </Shell>
+  );
+}
+
+function DeleteButton({
+  artwork,
+  onDone,
+}: {
+  artwork: Artwork;
+  onDone: () => void;
+}) {
+  const remove = async () => {
+    if (!window.confirm(`Delete "${artwork.title}"? This can't be undone.`))
+      return;
+    const { error } = await supabase
+      .from("artworks")
+      .delete()
+      .eq("id", artwork.id);
+    if (error) return toast.error(error.message);
+    await supabase.storage.from(BUCKET).remove([artwork.image_path]);
+    toast.success("Piece removed.");
+    onDone();
+  };
+
+  return (
+    <button className="text-ink/50 hover:text-sun" onClick={remove}>
+      Delete
+    </button>
+  );
+}
+
+function ArtworkForm({
+  artwork,
+  onClose,
+  onSaved,
+}: {
+  artwork: ArtworkWithUrl | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState(() =>
+    artwork
+      ? {
+          title: artwork.title,
+          medium: artwork.medium,
+          dimensions: artwork.dimensions,
+          year: artwork.year,
+          description: artwork.description,
+          alt_text: artwork.alt_text,
+          sort_order: artwork.sort_order,
+          published: artwork.published,
+        }
+      : emptyForm,
+  );
+  const [file, setFile] = useState<File | null>(null);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      let imagePath = artwork?.image_path ?? "";
+
+      if (file) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const path = `uploads/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, file, { contentType: file.type });
+        if (error) throw error;
+        imagePath = path;
+      }
+
+      if (!imagePath) throw new Error("Please choose an image.");
+
+      const payload = { ...form, image_path: imagePath };
+      const { error } = artwork
+        ? await supabase.from("artworks").update(payload).eq("id", artwork.id)
+        : await supabase.from("artworks").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(artwork ? "Piece updated." : "Piece added.");
+      onSaved();
+      onClose();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        {artwork ? `Edit "${artwork.title}"` : "Add a piece"}
+      </h2>
+      <form
+        className="mt-6 grid gap-4 sm:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <Field label="Title">
+          <Input
+            value={form.title}
+            required
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
+        </Field>
+        <Field label="Year">
+          <Input
+            value={form.year}
+            onChange={(e) => setForm({ ...form, year: e.target.value })}
+          />
+        </Field>
+        <Field label="Medium">
+          <Input
+            value={form.medium}
+            placeholder="Oil on linen"
+            onChange={(e) => setForm({ ...form, medium: e.target.value })}
+          />
+        </Field>
+        <Field label="Dimensions">
+          <Input
+            value={form.dimensions}
+            placeholder="80 × 100 cm"
+            onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
+          />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Description">
+            <Textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Image description (for screen readers)">
+            <Input
+              value={form.alt_text}
+              onChange={(e) => setForm({ ...form, alt_text: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="Order">
+          <Input
+            type="number"
+            value={form.sort_order}
+            onChange={(e) =>
+              setForm({ ...form, sort_order: Number(e.target.value) })
+            }
+          />
+        </Field>
+        <div className="flex items-end gap-3 pb-2">
+          <Switch
+            id="published"
+            checked={form.published}
+            onCheckedChange={(published) => setForm({ ...form, published })}
+          />
+          <Label htmlFor="published">Show on the site</Label>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label={artwork ? "Replace image (optional)" : "Image"}>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </Field>
+        </div>
+        <div className="flex gap-3 sm:col-span-2">
+          <Button type="submit" disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save piece"}
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function SiteContentEditor({
+  rows,
+  onSaved,
+}: {
+  rows: SiteContentRow[];
+  onSaved: () => void;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setValues(Object.fromEntries(rows.map((row) => [row.key, row.value])));
+  }, [rows]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      for (const row of rows) {
+        if (values[row.key] === row.value) continue;
+        const { error } = await supabase
+          .from("site_content")
+          .update({ value: values[row.key] ?? "" })
+          .eq("key", row.key);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Site text updated.");
+      onSaved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        Site text
+      </h2>
+      <div className="mt-6 grid gap-4">
+        {rows.map((row) => (
+          <Field key={row.key} label={row.label}>
+            {row.multiline ? (
+              <Textarea
+                rows={3}
+                value={values[row.key] ?? ""}
+                onChange={(e) =>
+                  setValues({ ...values, [row.key]: e.target.value })
+                }
+              />
+            ) : (
+              <Input
+                value={values[row.key] ?? ""}
+                onChange={(e) =>
+                  setValues({ ...values, [row.key]: e.target.value })
+                }
+              />
+            )}
+          </Field>
+        ))}
+      </div>
+      <Button
+        className="mt-6"
+        disabled={save.isPending}
+        onClick={() => save.mutate()}
+      >
+        {save.isPending ? "Saving…" : "Save site text"}
+      </Button>
+    </section>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
