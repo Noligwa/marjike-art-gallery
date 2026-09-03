@@ -159,7 +159,10 @@ function ClaimAdmin({ email }: { email: string }) {
     setBusy(true);
     const { data, error } = await supabase.rpc("claim_first_admin");
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     if (data) {
       toast.success("You're the studio admin now.");
       window.location.reload();
@@ -301,13 +304,17 @@ function DeleteButton({
   onDone: () => void;
 }) {
   const remove = async () => {
-    if (!window.confirm(`Delete "${artwork.title}"? This can't be undone.`))
+    if (!window.confirm(`Delete "${artwork.title}"? This can't be undone.`)) {
       return;
+    }
     const { error } = await supabase
       .from("artworks")
       .delete()
       .eq("id", artwork.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     await supabase.storage.from(BUCKET).remove([artwork.image_path]);
     toast.success("Piece removed.");
     onDone();
