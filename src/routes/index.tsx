@@ -7,6 +7,7 @@ import artistPortrait from "@/assets/artist-portrait.jpg";
 import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 import {
   artworksQuery,
+  signImagePath,
   siteContentQuery,
   toContentMap,
   type ArtworkWithUrl,
@@ -54,6 +55,11 @@ const FALLBACK = {
   commission_body: "",
   contact_email: "studio@marjike.art",
   instagram_url: "https://www.instagram.com/marjike_art/",
+  artist_photo_path: "",
+  artist_photo_name: "Marjike",
+  artist_photo_caption: "In the studio · Porto, late afternoon",
+  artist_photo_alt:
+    "Portrait of Marjike in her Porto studio, wearing a linen shirt in warm afternoon light",
 };
 
 function Index() {
@@ -63,6 +69,13 @@ function Index() {
 
   const content = { ...FALLBACK, ...toContentMap(contentRows ?? []) };
   const active = openIndex === null ? null : (artworks[openIndex] ?? null);
+
+  const { data: portraitUrl } = useQuery({
+    queryKey: ["artist-photo", content.artist_photo_path],
+    queryFn: () => signImagePath(content.artist_photo_path),
+    enabled: Boolean(content.artist_photo_path),
+  });
+
 
   return (
     <div className="min-h-screen bg-paper font-body text-ink">
@@ -187,6 +200,11 @@ function Index() {
                   <p className="mt-1 text-sm text-ink/60">
                     {[work.medium, work.dimensions].filter(Boolean).join(" · ")}
                   </p>
+                  {work.price && (
+                    <p className="mt-2 text-sm font-medium text-sun">
+                      {work.price}
+                    </p>
+                  )}
                 </div>
               </button>
             ))}
@@ -215,8 +233,8 @@ function Index() {
           <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <figure className="artwork-card mx-auto max-w-[420px] rounded-xl bg-paper p-3 ring-1 ring-black/5 lg:mx-0">
               <img
-                src={artistPortrait}
-                alt="Portrait of Marjike in her Porto studio, wearing a linen shirt in warm afternoon light"
+                src={portraitUrl || artistPortrait}
+                alt={content.artist_photo_alt}
                 width={1024}
                 height={1280}
                 loading="lazy"
@@ -224,10 +242,10 @@ function Index() {
               />
               <figcaption className="px-1 pb-1 pt-4">
                 <h3 className="font-display text-lg font-medium tracking-tight">
-                  Marjike
+                  {content.artist_photo_name}
                 </h3>
                 <p className="mt-1 text-sm text-ink/60">
-                  In the studio · Porto, late afternoon
+                  {content.artist_photo_caption}
                 </p>
               </figcaption>
             </figure>
@@ -359,6 +377,11 @@ function Lightbox({
           <p className="mt-3 text-sm text-ink/60">
             {[artwork.medium, artwork.dimensions].filter(Boolean).join(" · ")}
           </p>
+          {artwork.price && (
+            <p className="mt-4 font-display text-xl font-medium text-sun">
+              {artwork.price}
+            </p>
+          )}
           {artwork.description && (
             <p className="mt-6 text-base leading-relaxed text-ink/75 text-pretty">
               {artwork.description}

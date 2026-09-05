@@ -23,6 +23,7 @@ export type Database = {
           id: string
           image_path: string
           medium: string
+          price: string
           published: boolean
           sort_order: number
           title: string
@@ -37,6 +38,7 @@ export type Database = {
           id?: string
           image_path?: string
           medium?: string
+          price?: string
           published?: boolean
           sort_order?: number
           title?: string
@@ -51,6 +53,7 @@ export type Database = {
           id?: string
           image_path?: string
           medium?: string
+          price?: string
           published?: boolean
           sort_order?: number
           title?: string

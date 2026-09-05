@@ -6,6 +6,7 @@ export type Artwork = {
   medium: string;
   dimensions: string;
   year: string;
+  price: string;
   description: string;
   image_path: string;
   alt_text: string;
@@ -36,6 +37,14 @@ export async function signImagePaths(
   });
   return map;
 }
+
+/** Signs a single stored image path, or returns "" when there is none. */
+export async function signImagePath(path: string): Promise<string> {
+  if (!path) return "";
+  const map = await signImagePaths([path]);
+  return map[path] ?? "";
+}
+
 
 export async function fetchArtworks(includeUnpublished = false) {
   let query = supabase
