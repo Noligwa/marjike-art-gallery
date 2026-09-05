@@ -377,6 +377,11 @@ function Lightbox({
           <p className="mt-3 text-sm text-ink/60">
             {[artwork.medium, artwork.dimensions].filter(Boolean).join(" · ")}
           </p>
+          {artwork.price && (
+            <p className="mt-4 font-display text-xl font-medium text-sun">
+              {artwork.price}
+            </p>
+          )}
           {artwork.description && (
             <p className="mt-6 text-base leading-relaxed text-ink/75 text-pretty">
               {artwork.description}
