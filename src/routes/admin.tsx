@@ -658,7 +658,7 @@ function SiteContentEditor({
 
   const save = useMutation({
     mutationFn: async () => {
-      for (const row of rows) {
+      for (const row of textRows) {
         if (values[row.key] === row.value) continue;
         const { error } = await supabase
           .from("site_content")
