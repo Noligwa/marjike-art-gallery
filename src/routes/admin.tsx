@@ -405,7 +405,10 @@ function ArtworkForm({
   });
 
   return (
-    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+    <section
+      ref={sectionRef}
+      className="mt-8 scroll-mt-6 rounded-2xl bg-card p-6 ring-1 ring-black/5"
+    >
       <h2 className="font-display text-2xl font-medium tracking-tight">
         {artwork ? `Edit "${artwork.title}"` : "Add a piece"}
       </h2>
