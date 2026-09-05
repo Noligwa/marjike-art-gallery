@@ -202,6 +202,9 @@ function AdminDashboard({ email }: { email: string }) {
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const nextOrder =
+    artworks.reduce((max, work) => Math.max(max, work.sort_order), 0) + 1;
+
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["artworks"] });
     void qc.invalidateQueries({ queryKey: ["site-content"] });
