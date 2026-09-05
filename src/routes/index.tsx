@@ -55,6 +55,11 @@ const FALLBACK = {
   commission_body: "",
   contact_email: "studio@marjike.art",
   instagram_url: "https://www.instagram.com/marjike_art/",
+  artist_photo_path: "",
+  artist_photo_name: "Marjike",
+  artist_photo_caption: "In the studio · Porto, late afternoon",
+  artist_photo_alt:
+    "Portrait of Marjike in her Porto studio, wearing a linen shirt in warm afternoon light",
 };
 
 function Index() {
@@ -64,6 +69,13 @@ function Index() {
 
   const content = { ...FALLBACK, ...toContentMap(contentRows ?? []) };
   const active = openIndex === null ? null : (artworks[openIndex] ?? null);
+
+  const { data: portraitUrl } = useQuery({
+    queryKey: ["artist-photo", content.artist_photo_path],
+    queryFn: () => signImagePath(content.artist_photo_path),
+    enabled: Boolean(content.artist_photo_path),
+  });
+
 
   return (
     <div className="min-h-screen bg-paper font-body text-ink">
