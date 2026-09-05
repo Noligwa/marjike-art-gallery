@@ -200,6 +200,11 @@ function Index() {
                   <p className="mt-1 text-sm text-ink/60">
                     {[work.medium, work.dimensions].filter(Boolean).join(" · ")}
                   </p>
+                  {work.price && (
+                    <p className="mt-2 text-sm font-medium text-sun">
+                      {work.price}
+                    </p>
+                  )}
                 </div>
               </button>
             ))}
