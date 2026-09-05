@@ -233,8 +233,8 @@ function Index() {
           <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <figure className="artwork-card mx-auto max-w-[420px] rounded-xl bg-paper p-3 ring-1 ring-black/5 lg:mx-0">
               <img
-                src={artistPortrait}
-                alt="Portrait of Marjike in her Porto studio, wearing a linen shirt in warm afternoon light"
+                src={portraitUrl || artistPortrait}
+                alt={content.artist_photo_alt}
                 width={1024}
                 height={1280}
                 loading="lazy"
@@ -242,10 +242,10 @@ function Index() {
               />
               <figcaption className="px-1 pb-1 pt-4">
                 <h3 className="font-display text-lg font-medium tracking-tight">
-                  Marjike
+                  {content.artist_photo_name}
                 </h3>
                 <p className="mt-1 text-sm text-ink/60">
-                  In the studio · Porto, late afternoon
+                  {content.artist_photo_caption}
                 </p>
               </figcaption>
             </figure>
