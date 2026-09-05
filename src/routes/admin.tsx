@@ -342,13 +342,16 @@ function DeleteButton({
 
 function ArtworkForm({
   artwork,
+  nextOrder,
   onClose,
   onSaved,
 }: {
   artwork: ArtworkWithUrl | null;
+  nextOrder: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const [form, setForm] = useState(() =>
     artwork
       ? {
@@ -356,14 +359,20 @@ function ArtworkForm({
           medium: artwork.medium,
           dimensions: artwork.dimensions,
           year: artwork.year,
+          price: artwork.price ?? "",
           description: artwork.description,
           alt_text: artwork.alt_text,
           sort_order: artwork.sort_order,
           published: artwork.published,
         }
-      : emptyForm,
+      : { ...emptyForm, sort_order: nextOrder },
   );
   const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
 
   const save = useMutation({
     mutationFn: async () => {
