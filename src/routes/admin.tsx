@@ -233,6 +233,7 @@ function AdminDashboard({ email }: { email: string }) {
             Artworks ({artworks.length})
           </h2>
           <Button
+            type="button"
             onClick={() => {
               setEditing(null);
               setCreating(true);
@@ -258,12 +259,16 @@ function AdminDashboard({ email }: { email: string }) {
                 <p className="truncate text-sm text-ink/60">
                   {[work.medium, work.dimensions].filter(Boolean).join(" · ")}
                 </p>
+                {work.price && (
+                  <p className="truncate text-sm text-sun">{work.price}</p>
+                )}
                 <p className="mt-1 text-xs uppercase tracking-widest text-clay">
                   #{work.sort_order} ·{" "}
                   {work.published ? "Published" : "Hidden"}
                 </p>
                 <div className="mt-2 flex gap-3 text-sm">
                   <button
+                    type="button"
                     className="text-sun hover:underline"
                     onClick={() => {
                       setCreating(false);
@@ -284,6 +289,7 @@ function AdminDashboard({ email }: { email: string }) {
         <ArtworkForm
           key={editing?.id ?? "new"}
           artwork={editing}
+          nextOrder={nextOrder}
           onClose={() => {
             setCreating(false);
             setEditing(null);
@@ -292,7 +298,10 @@ function AdminDashboard({ email }: { email: string }) {
         />
       )}
 
+      <ArtistPhotoEditor rows={contentRows} onSaved={refresh} />
+
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
+
     </Shell>
   );
 }
