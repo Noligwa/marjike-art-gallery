@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   BUCKET,
   artworksQuery,
+  signImagePath,
   siteContentQuery,
   type Artwork,
   type ArtworkWithUrl,
