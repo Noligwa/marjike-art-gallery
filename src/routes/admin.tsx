@@ -45,9 +45,10 @@ const emptyForm = {
   medium: "",
   dimensions: "",
   year: String(new Date().getFullYear()),
+  price: "",
   description: "",
   alt_text: "",
-  sort_order: 0,
+  sort_order: 1,
   published: true,
 };
 
