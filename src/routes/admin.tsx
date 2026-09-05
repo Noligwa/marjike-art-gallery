@@ -432,6 +432,13 @@ function ArtworkForm({
             onChange={(e) => setForm({ ...form, year: e.target.value })}
           />
         </Field>
+        <Field label="Price">
+          <Input
+            value={form.price}
+            placeholder="€ 850"
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+          />
+        </Field>
         <Field label="Medium">
           <Input
             value={form.medium}
