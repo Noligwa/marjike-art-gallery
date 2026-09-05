@@ -516,6 +516,129 @@ function ArtworkForm({
   );
 }
 
+function ArtistPhotoEditor({
+  rows,
+  onSaved,
+}: {
+  rows: SiteContentRow[];
+  onSaved: () => void;
+}) {
+  const map = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  const currentPath = map["artist_photo_path"] ?? "";
+
+  const [name, setName] = useState("");
+  const [caption, setCaption] = useState("");
+  const [alt, setAlt] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+
+  useEffect(() => {
+    setName(map["artist_photo_name"] ?? "");
+    setCaption(map["artist_photo_caption"] ?? "");
+    setAlt(map["artist_photo_alt"] ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  useEffect(() => {
+    let active = true;
+    void signImagePath(currentPath).then((url) => {
+      if (active) setPreview(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentPath]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      let path = currentPath;
+      if (file) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const target = `artist/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(target, file, { contentType: file.type });
+        if (error) throw error;
+        path = target;
+      }
+
+      const updates: Array<[string, string]> = [
+        ["artist_photo_path", path],
+        ["artist_photo_name", name],
+        ["artist_photo_caption", caption],
+        ["artist_photo_alt", alt],
+      ];
+
+      for (const [key, value] of updates) {
+        const { error } = await supabase
+          .from("site_content")
+          .update({ value })
+          .eq("key", key);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Artist photo updated.");
+      setFile(null);
+      onSaved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        Artist photo
+      </h2>
+      <div className="mt-6 grid gap-6 sm:grid-cols-[180px_1fr]">
+        <div className="rounded-xl bg-paper p-3 ring-1 ring-black/5">
+          {preview ? (
+            <img
+              src={preview}
+              alt={alt || "Current artist photo"}
+              className="aspect-[4/5] w-full rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex aspect-[4/5] items-center justify-center rounded-lg bg-card text-center text-xs text-ink/50">
+              Using the default photo
+            </div>
+          )}
+        </div>
+        <div className="grid gap-4">
+          <Field label="Replace the photo">
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </Field>
+          <Field label="Name shown under the photo">
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <Field label="Caption">
+            <Input
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+            />
+          </Field>
+          <Field label="Photo description (for screen readers)">
+            <Textarea
+              rows={2}
+              value={alt}
+              onChange={(e) => setAlt(e.target.value)}
+            />
+          </Field>
+          <div>
+            <Button disabled={save.isPending} onClick={() => save.mutate()}>
+              {save.isPending ? "Saving…" : "Save artist photo"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function SiteContentEditor({
   rows,
   onSaved,
@@ -523,11 +646,14 @@ function SiteContentEditor({
   rows: SiteContentRow[];
   onSaved: () => void;
 }) {
+  const textRows = rows.filter((row) => !row.key.startsWith("artist_photo_"));
   const [values, setValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setValues(Object.fromEntries(rows.map((row) => [row.key, row.value])));
+    setValues(Object.fromEntries(textRows.map((row) => [row.key, row.value])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
+
 
   const save = useMutation({
     mutationFn: async () => {
