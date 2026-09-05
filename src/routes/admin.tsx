@@ -680,7 +680,7 @@ function SiteContentEditor({
         Site text
       </h2>
       <div className="mt-6 grid gap-4">
-        {rows.map((row) => (
+        {textRows.map((row) => (
           <Field key={row.key} label={row.label}>
             {row.multiline ? (
               <Textarea
