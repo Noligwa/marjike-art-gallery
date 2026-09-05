@@ -7,6 +7,7 @@ import artistPortrait from "@/assets/artist-portrait.jpg";
 import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 import {
   artworksQuery,
+  signImagePath,
   siteContentQuery,
   toContentMap,
   type ArtworkWithUrl,
