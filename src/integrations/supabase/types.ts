@@ -62,6 +62,39 @@ export type Database = {
         }
         Relationships: []
       }
+      external_db_config: {
+        Row: {
+          created_at: string
+          id: boolean
+          is_active: boolean
+          publishable_key: string
+          service_key_ciphertext: string
+          service_key_last4: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          is_active?: boolean
+          publishable_key?: string
+          service_key_ciphertext?: string
+          service_key_last4?: string
+          updated_at?: string
+          url?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          is_active?: boolean
+          publishable_key?: string
+          service_key_ciphertext?: string
+          service_key_last4?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       site_content: {
         Row: {
           key: string
