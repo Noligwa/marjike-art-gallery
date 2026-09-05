@@ -472,12 +472,17 @@ function ArtworkForm({
             />
           </Field>
         </div>
-        <Field label="Order">
+        <Field label="Order on the page (1 = shown first)">
           <Input
             type="number"
+            min={1}
+            step={1}
             value={form.sort_order}
             onChange={(e) =>
-              setForm({ ...form, sort_order: Number(e.target.value) })
+              setForm({
+                ...form,
+                sort_order: Math.max(1, Number(e.target.value) || 1),
+              })
             }
           />
         </Field>
