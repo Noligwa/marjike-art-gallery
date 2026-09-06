@@ -43,9 +43,10 @@ export async function saveArtwork(
     await extSaveArtwork({ data: id ? { id, payload } : { payload } });
     return;
   }
+  const row = payload as never;
   const { error } = id
-    ? await supabase.from("artworks").update(payload).eq("id", id)
-    : await supabase.from("artworks").insert(payload);
+    ? await supabase.from("artworks").update(row).eq("id", id)
+    : await supabase.from("artworks").insert(row);
   if (error) throw error;
 }
 
