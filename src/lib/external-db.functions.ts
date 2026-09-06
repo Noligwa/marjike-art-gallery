@@ -347,3 +347,47 @@ export const extUploadImage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { path: data.path };
   });
+
+/** Admin read of the artist's database, including hidden pieces. */
+export const extListArtworks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context as unknown as AuthContext);
+    const { externalClientFromConfig } = await import("./external-db.server");
+    const { client } = await externalClientFromConfig();
+    const { data, error } = await client
+      .from("artworks")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const raw = (data ?? []) as Array<Record<string, unknown>>;
+    const rows = raw.map((r) => ({
+      id: String(r["id"] ?? ""),
+      title: String(r["title"] ?? ""),
+      medium: String(r["medium"] ?? ""),
+      dimensions: String(r["dimensions"] ?? ""),
+      year: String(r["year"] ?? ""),
+      price: String(r["price"] ?? ""),
+      description: String(r["description"] ?? ""),
+      image_path: String(r["image_path"] ?? ""),
+      alt_text: String(r["alt_text"] ?? ""),
+      sort_order: Number(r["sort_order"] ?? 0),
+      published: Boolean(r["published"]),
+    }));
+    const paths = Array.from(
+      new Set(rows.map((r) => r.image_path).filter(Boolean)),
+    );
+    const urls: Record<string, string> = {};
+    if (paths.length) {
+      const signed = await client.storage
+        .from(BUCKET)
+        .createSignedUrls(paths, 60 * 60 * 24 * 7);
+      signed.data?.forEach((entry, index) => {
+        const path = entry.path ?? paths[index];
+        if (path && entry.signedUrl) urls[path] = entry.signedUrl;
+      });
+    }
+    return { rows, urls };
+  });

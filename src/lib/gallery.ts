@@ -1,4 +1,7 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicDbTarget } from "./external-db.functions";
 
 export type Artwork = {
   id: string;
@@ -17,6 +20,50 @@ export type Artwork = {
 export const BUCKET = "artworks";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 days
 
+type Target = { active: boolean; url: string; publishableKey: string };
+
+let targetPromise: Promise<Target> | null = null;
+let externalClient: SupabaseClient | null = null;
+
+/** Which database the site is currently reading from. */
+export function getDbTarget(): Promise<Target> {
+  if (!targetPromise) {
+    targetPromise = getPublicDbTarget().catch(() => ({
+      active: false,
+      url: "",
+      publishableKey: "",
+    }));
+  }
+  return targetPromise;
+}
+
+/** Forget the cached target after the artist switches databases. */
+export function resetDbTarget() {
+  targetPromise = null;
+  externalClient = null;
+}
+
+/** The Supabase client the gallery reads through — built-in or the artist's. */
+export async function getDataClient(): Promise<SupabaseClient> {
+  const target = await getDbTarget();
+  if (!target.active) return supabase as unknown as SupabaseClient;
+  if (!externalClient) {
+    externalClient = createClient(target.url, target.publishableKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        storage: undefined,
+      },
+    });
+  }
+  return externalClient;
+}
+
+/** True when the artist's own database is serving the site. */
+export async function isExternalActive() {
+  return (await getDbTarget()).active;
+}
+
 /** Creates browser-usable URLs for private storage objects. */
 export async function signImagePaths(
   paths: string[],
@@ -24,7 +71,8 @@ export async function signImagePaths(
   const unique = Array.from(new Set(paths.filter(Boolean)));
   if (unique.length === 0) return {};
 
-  const { data, error } = await supabase.storage
+  const client = await getDataClient();
+  const { data, error } = await client.storage
     .from(BUCKET)
     .createSignedUrls(unique, SIGNED_URL_TTL);
 
@@ -45,9 +93,18 @@ export async function signImagePath(path: string): Promise<string> {
   return map[path] ?? "";
 }
 
-
 export async function fetchArtworks(includeUnpublished = false) {
-  let query = supabase
+  if (includeUnpublished && (await isExternalActive())) {
+    const { extListArtworks } = await import("./external-db.functions");
+    const { rows, urls } = await extListArtworks();
+    return (rows as unknown as Artwork[]).map((artwork) => ({
+      ...artwork,
+      imageUrl: urls[artwork.image_path] ?? "",
+    }));
+  }
+
+  const client = await getDataClient();
+  let query = client
     .from("artworks")
     .select("*")
     .order("sort_order", { ascending: true })
@@ -77,7 +134,8 @@ export type SiteContentRow = {
 };
 
 export async function fetchSiteContent() {
-  const { data, error } = await supabase
+  const client = await getDataClient();
+  const { data, error } = await client
     .from("site_content")
     .select("*")
     .order("sort_order", { ascending: true });

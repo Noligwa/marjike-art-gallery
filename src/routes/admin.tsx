@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  BUCKET,
   artworksQuery,
   signImagePath,
   siteContentQuery,
@@ -14,6 +13,13 @@ import {
   type ArtworkWithUrl,
   type SiteContentRow,
 } from "@/lib/gallery";
+import {
+  deleteArtwork,
+  saveArtwork,
+  updateContent,
+  uploadImage,
+} from "@/lib/gallery-writes";
+import { ExternalDbPanel } from "@/components/ExternalDbPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -306,6 +312,8 @@ function AdminDashboard({ email }: { email: string }) {
 
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
 
+      <ExternalDbPanel onSwitched={refresh} />
+
     </Shell>
   );
 }
@@ -321,15 +329,12 @@ function DeleteButton({
     if (!window.confirm(`Delete "${artwork.title}"? This can't be undone.`)) {
       return;
     }
-    const { error } = await supabase
-      .from("artworks")
-      .delete()
-      .eq("id", artwork.id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await deleteArtwork(artwork.id, artwork.image_path);
+    } catch (error) {
+      toast.error((error as Error).message);
       return;
     }
-    await supabase.storage.from(BUCKET).remove([artwork.image_path]);
     toast.success("Piece removed.");
     onDone();
   };
@@ -381,21 +386,15 @@ function ArtworkForm({
 
       if (file) {
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-        const path = `uploads/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, file, { contentType: file.type });
-        if (error) throw error;
-        imagePath = path;
+        imagePath = await uploadImage(
+          file,
+          `uploads/${crypto.randomUUID()}.${ext}`,
+        );
       }
 
       if (!imagePath) throw new Error("Please choose an image.");
 
-      const payload = { ...form, image_path: imagePath };
-      const { error } = artwork
-        ? await supabase.from("artworks").update(payload).eq("id", artwork.id)
-        : await supabase.from("artworks").insert(payload);
-      if (error) throw error;
+      await saveArtwork({ ...form, image_path: imagePath }, artwork?.id);
     },
     onSuccess: () => {
       toast.success(artwork ? "Piece updated." : "Piece added.");
@@ -555,12 +554,7 @@ function ArtistPhotoEditor({
       let path = currentPath;
       if (file) {
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-        const target = `artist/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from(BUCKET)
-          .upload(target, file, { contentType: file.type });
-        if (error) throw error;
-        path = target;
+        path = await uploadImage(file, `artist/${crypto.randomUUID()}.${ext}`);
       }
 
       const updates: Array<[string, string]> = [
@@ -571,11 +565,7 @@ function ArtistPhotoEditor({
       ];
 
       for (const [key, value] of updates) {
-        const { error } = await supabase
-          .from("site_content")
-          .update({ value })
-          .eq("key", key);
-        if (error) throw error;
+        await updateContent(key, value);
       }
     },
     onSuccess: () => {
@@ -660,11 +650,7 @@ function SiteContentEditor({
     mutationFn: async () => {
       for (const row of textRows) {
         if (values[row.key] === row.value) continue;
-        const { error } = await supabase
-          .from("site_content")
-          .update({ value: values[row.key] ?? "" })
-          .eq("key", row.key);
-        if (error) throw error;
+        await updateContent(row.key, values[row.key] ?? "");
       }
     },
     onSuccess: () => {
