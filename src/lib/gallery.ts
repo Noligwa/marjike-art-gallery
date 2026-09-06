@@ -94,6 +94,15 @@ export async function signImagePath(path: string): Promise<string> {
 }
 
 export async function fetchArtworks(includeUnpublished = false) {
+  if (includeUnpublished && (await isExternalActive())) {
+    const { extListArtworks } = await import("./external-db.functions");
+    const { rows, urls } = await extListArtworks();
+    return (rows as unknown as Artwork[]).map((artwork) => ({
+      ...artwork,
+      imageUrl: urls[artwork.image_path] ?? "",
+    }));
+  }
+
   const client = await getDataClient();
   let query = client
     .from("artworks")
