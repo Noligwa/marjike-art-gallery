@@ -347,3 +347,34 @@ export const extUploadImage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { path: data.path };
   });
+
+/** Admin read of the artist's database, including hidden pieces. */
+export const extListArtworks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context as unknown as AuthContext);
+    const { externalClientFromConfig } = await import("./external-db.server");
+    const { client } = await externalClientFromConfig();
+    const { data, error } = await client
+      .from("artworks")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    const paths = Array.from(
+      new Set(rows.map((r) => String(r["image_path"] ?? "")).filter(Boolean)),
+    );
+    const urls: Record<string, string> = {};
+    if (paths.length) {
+      const signed = await client.storage
+        .from(BUCKET)
+        .createSignedUrls(paths, 60 * 60 * 24 * 7);
+      signed.data?.forEach((entry, index) => {
+        const path = entry.path ?? paths[index];
+        if (path && entry.signedUrl) urls[path] = entry.signedUrl;
+      });
+    }
+    return { rows, urls };
+  });
