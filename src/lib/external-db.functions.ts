@@ -362,9 +362,22 @@ export const extListArtworks = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
 
-    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    const raw = (data ?? []) as Array<Record<string, unknown>>;
+    const rows = raw.map((r) => ({
+      id: String(r["id"] ?? ""),
+      title: String(r["title"] ?? ""),
+      medium: String(r["medium"] ?? ""),
+      dimensions: String(r["dimensions"] ?? ""),
+      year: String(r["year"] ?? ""),
+      price: String(r["price"] ?? ""),
+      description: String(r["description"] ?? ""),
+      image_path: String(r["image_path"] ?? ""),
+      alt_text: String(r["alt_text"] ?? ""),
+      sort_order: Number(r["sort_order"] ?? 0),
+      published: Boolean(r["published"]),
+    }));
     const paths = Array.from(
-      new Set(rows.map((r) => String(r["image_path"] ?? "")).filter(Boolean)),
+      new Set(rows.map((r) => r.image_path).filter(Boolean)),
     );
     const urls: Record<string, string> = {};
     if (paths.length) {
