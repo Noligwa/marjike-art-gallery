@@ -58,7 +58,22 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from public.user_roles
                  where user_id = _user_id and role = _role);
 $fn$;
-revoke execute on function public.has_role(uuid, public.app_role) from public, anon, authenticated;
+revoke execute on function public.has_role(uuid, public.app_role) from public, anon;
+grant execute on function public.has_role(uuid, public.app_role) to authenticated;
+
+-- The very first signed-in person can claim the studio admin role, but only
+-- while no admin exists yet.
+create or replace function public.claim_first_admin()
+returns boolean language plpgsql security definer set search_path = public as $fn$
+begin
+  if auth.uid() is null then return false; end if;
+  if exists (select 1 from public.user_roles where role = 'admin') then return false; end if;
+  insert into public.user_roles (user_id, role) values (auth.uid(), 'admin')
+  on conflict do nothing;
+  return true;
+end; $fn$;
+revoke execute on function public.claim_first_admin() from public, anon;
+grant execute on function public.claim_first_admin() to authenticated;
 
 grant select on public.artworks to anon, authenticated;
 grant select, insert, update, delete on public.artworks to authenticated;
@@ -79,9 +94,35 @@ drop policy if exists "Anyone can view published artworks" on public.artworks;
 create policy "Anyone can view published artworks" on public.artworks
 for select to anon, authenticated using (published = true);
 
+drop policy if exists "Admins can view all artworks" on public.artworks;
+create policy "Admins can view all artworks" on public.artworks
+for select to authenticated using (public.has_role(auth.uid(), 'admin'));
+
+drop policy if exists "Admins can insert artworks" on public.artworks;
+create policy "Admins can insert artworks" on public.artworks
+for insert to authenticated with check (public.has_role(auth.uid(), 'admin'));
+
+drop policy if exists "Admins can update artworks" on public.artworks;
+create policy "Admins can update artworks" on public.artworks
+for update to authenticated using (public.has_role(auth.uid(), 'admin'))
+with check (public.has_role(auth.uid(), 'admin'));
+
+drop policy if exists "Admins can delete artworks" on public.artworks;
+create policy "Admins can delete artworks" on public.artworks
+for delete to authenticated using (public.has_role(auth.uid(), 'admin'));
+
 drop policy if exists "Anyone can view site content" on public.site_content;
 create policy "Anyone can view site content" on public.site_content
 for select to anon, authenticated using (true);
+
+drop policy if exists "Admins can insert site content" on public.site_content;
+create policy "Admins can insert site content" on public.site_content
+for insert to authenticated with check (public.has_role(auth.uid(), 'admin'));
+
+drop policy if exists "Admins can update site content" on public.site_content;
+create policy "Admins can update site content" on public.site_content
+for update to authenticated using (public.has_role(auth.uid(), 'admin'))
+with check (public.has_role(auth.uid(), 'admin'));
 
 drop policy if exists "Users can view their own roles" on public.user_roles;
 create policy "Users can view their own roles" on public.user_roles
@@ -92,4 +133,19 @@ for select to authenticated using (user_id = auth.uid());
 drop policy if exists "Public can read artwork files" on storage.objects;
 create policy "Public can read artwork files" on storage.objects
 for select to anon, authenticated using (bucket_id = 'artworks');
+
+drop policy if exists "Admins can upload artwork files" on storage.objects;
+create policy "Admins can upload artwork files" on storage.objects
+for insert to authenticated
+with check (bucket_id = 'artworks' and public.has_role(auth.uid(), 'admin'));
+
+drop policy if exists "Admins can update artwork files" on storage.objects;
+create policy "Admins can update artwork files" on storage.objects
+for update to authenticated
+using (bucket_id = 'artworks' and public.has_role(auth.uid(), 'admin'));
+
+drop policy if exists "Admins can delete artwork files" on storage.objects;
+create policy "Admins can delete artwork files" on storage.objects
+for delete to authenticated
+using (bucket_id = 'artworks' and public.has_role(auth.uid(), 'admin'));
 `;

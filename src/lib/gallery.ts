@@ -43,6 +43,20 @@ export function resetDbTarget() {
   externalClient = null;
 }
 
+const BUILTIN_FLAG = "marjike-builtin-login";
+
+/** True when the studio was opened with /admin?builtin=1 (rescue login). */
+export function isBuiltInAuthForced(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(BUILTIN_FLAG) === "1";
+}
+
+export function setBuiltInAuthForced(on: boolean) {
+  if (typeof window === "undefined") return;
+  if (on) window.sessionStorage.setItem(BUILTIN_FLAG, "1");
+  else window.sessionStorage.removeItem(BUILTIN_FLAG);
+}
+
 /** The Supabase client the gallery reads through — built-in or the artist's. */
 export async function getDataClient(): Promise<SupabaseClient> {
   const target = await getDbTarget();
@@ -50,19 +64,29 @@ export async function getDataClient(): Promise<SupabaseClient> {
   if (!externalClient) {
     externalClient = createClient(target.url, target.publishableKey, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        storage: undefined,
+        persistSession: true,
+        autoRefreshToken: true,
+        storageKey: "marjike-external-auth",
       },
     });
   }
   return externalClient;
 }
 
+/**
+ * The client that owns the studio login. Once the artist's own database is
+ * live, accounts and passwords live there too — unless the rescue login is on.
+ */
+export async function getAuthClient(): Promise<SupabaseClient> {
+  if (isBuiltInAuthForced()) return supabase as unknown as SupabaseClient;
+  return getDataClient();
+}
+
 /** True when the artist's own database is serving the site. */
 export async function isExternalActive() {
   return (await getDbTarget()).active;
 }
+
 
 /** Creates browser-usable URLs for private storage objects. */
 export async function signImagePaths(
