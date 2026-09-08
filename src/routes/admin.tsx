@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   artworksQuery,
   isBuiltInAuthForced,
+  isExternalActive,
   setBuiltInAuthForced,
   signImagePath,
   siteContentQuery,
@@ -259,6 +260,10 @@ function AdminDashboard({
   builtin: boolean;
 }) {
   const qc = useQueryClient();
+  const { data: external = false } = useQuery({
+    queryKey: ["db-external-active"],
+    queryFn: isExternalActive,
+  });
   const { data: artworks = [] } = useQuery(artworksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);

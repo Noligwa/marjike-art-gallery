@@ -18,11 +18,18 @@ import {
   setExternalDbActive,
 } from "@/lib/external-db.functions";
 
-export function ExternalDbPanel({ onSwitched }: { onSwitched: () => void }) {
+export function ExternalDbPanel({
+  onSwitched,
+  manageable = true,
+}: {
+  onSwitched: () => void;
+  manageable?: boolean;
+}) {
   const queryClient = useQueryClient();
   const status = useQuery({
     queryKey: ["external-db-status"],
     queryFn: () => getExternalDbStatus(),
+    enabled: manageable,
   });
 
   const save = useServerFn(saveExternalDb);
