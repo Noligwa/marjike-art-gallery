@@ -146,8 +146,10 @@ export function ExternalDbPanel({
       </h2>
       <p className="mt-2 max-w-prose text-sm text-ink/60">
         Move your artworks, site text and photos into a database you own. The
-        built-in copy stays untouched, so you can switch back any time. Signing
-        in to this panel always stays here.
+        built-in copy stays untouched, so you can switch back any time. Once
+        it's live, your studio login lives in your database too — create your
+        account there on the sign-in screen and claim admin.
+
       </p>
 
       <div className="mt-4 rounded-xl bg-paper p-4 text-sm ring-1 ring-black/5">
