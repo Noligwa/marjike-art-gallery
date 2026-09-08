@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import {
   artworksQuery,
+  isBuiltInAuthForced,
+  setBuiltInAuthForced,
   signImagePath,
   siteContentQuery,
   type Artwork,
@@ -184,12 +186,18 @@ function SignIn({
   );
 }
 
-function ClaimAdmin({ email }: { email: string }) {
+function ClaimAdmin({
+  client,
+  email,
+}: {
+  client: SupabaseClient;
+  email: string;
+}) {
   const [busy, setBusy] = useState(false);
 
   const claim = async () => {
     setBusy(true);
-    const { data, error } = await supabase.rpc("claim_first_admin");
+    const { data, error } = await client.rpc("claim_first_admin");
     setBusy(false);
     if (error) {
       toast.error(error.message);
@@ -217,7 +225,8 @@ function ClaimAdmin({ email }: { email: string }) {
           <Button onClick={claim} disabled={busy}>
             Claim studio admin
           </Button>
-          <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+          <Button variant="outline" onClick={() => client.auth.signOut()}>
+
             Sign out
           </Button>
         </div>
@@ -226,7 +235,15 @@ function ClaimAdmin({ email }: { email: string }) {
   );
 }
 
-function AdminDashboard({ email }: { email: string }) {
+function AdminDashboard({
+  client,
+  email,
+  builtin,
+}: {
+  client: SupabaseClient;
+  email: string;
+  builtin: boolean;
+}) {
   const qc = useQueryClient();
   const { data: artworks = [] } = useQuery(artworksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
@@ -255,7 +272,7 @@ function AdminDashboard({ email }: { email: string }) {
           <Link to="/">
             <Button variant="outline">View site</Button>
           </Link>
-          <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+          <Button variant="outline" onClick={() => client.auth.signOut()}>
             Sign out
           </Button>
         </div>
