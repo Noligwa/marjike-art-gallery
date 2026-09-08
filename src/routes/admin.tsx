@@ -260,6 +260,22 @@ function AdminDashboard({
 
   return (
     <Shell>
+      {builtin && (
+        <div className="mb-6 rounded-xl bg-card p-4 text-sm ring-1 ring-sun/40">
+          Built-in login (rescue mode). Use this only to change or switch back
+          the database connection below.{" "}
+          <button
+            type="button"
+            className="text-sun underline"
+            onClick={() => {
+              setBuiltInAuthForced(false);
+              window.location.replace("/admin");
+            }}
+          >
+            Leave rescue mode
+          </button>
+        </div>
+      )}
       <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-sun">Studio</p>
@@ -277,6 +293,7 @@ function AdminDashboard({
           </Button>
         </div>
       </div>
+
 
       <section className="rounded-2xl bg-card p-6 ring-1 ring-black/5">
         <div className="mb-6 flex items-center justify-between">
