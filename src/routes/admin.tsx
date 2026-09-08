@@ -176,11 +176,25 @@ function SignIn({
             ? "First time here? Create an account"
             : "Already have an account? Sign in"}
         </button>
+        {builtin ? (
+          <p className="mt-6 text-xs text-ink/50">
+            Rescue mode: signing in with the built-in account.
+          </p>
+        ) : (
+          <p className="mt-6 text-xs text-ink/50">
+            Locked out after switching databases?{" "}
+            <a href="/admin?builtin=1" className="text-sun underline">
+              Use the built-in login
+            </a>
+            .
+          </p>
+        )}
         <div className="mt-8 border-t border-ink/10 pt-5">
           <Link to="/" className="text-sm text-ink/60 hover:text-sun">
             ← Back to the site
           </Link>
         </div>
+
       </div>
     </Shell>
   );
@@ -370,7 +384,7 @@ function AdminDashboard({
 
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
 
-      <ExternalDbPanel onSwitched={refresh} />
+      <ExternalDbPanel onSwitched={refresh} manageable={builtin || !external} />
 
     </Shell>
   );
