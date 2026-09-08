@@ -18,11 +18,18 @@ import {
   setExternalDbActive,
 } from "@/lib/external-db.functions";
 
-export function ExternalDbPanel({ onSwitched }: { onSwitched: () => void }) {
+export function ExternalDbPanel({
+  onSwitched,
+  manageable = true,
+}: {
+  onSwitched: () => void;
+  manageable?: boolean;
+}) {
   const queryClient = useQueryClient();
   const status = useQuery({
     queryKey: ["external-db-status"],
     queryFn: () => getExternalDbStatus(),
+    enabled: manageable,
   });
 
   const save = useServerFn(saveExternalDb);
@@ -114,6 +121,24 @@ export function ExternalDbPanel({ onSwitched }: { onSwitched: () => void }) {
     copyOver.isPending ||
     toggle.isPending;
 
+  if (!manageable) {
+    return (
+      <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+        <h2 className="font-display text-2xl font-medium tracking-tight">
+          My database
+        </h2>
+        <p className="mt-2 max-w-prose text-sm text-ink/60">
+          Your own database is live, and you're signed in with an account that
+          lives there. To change the connection or switch back, open the{" "}
+          <a href="/admin?builtin=1" className="text-sun underline">
+            built-in login
+          </a>
+          .
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
       <h2 className="font-display text-2xl font-medium tracking-tight">
@@ -121,8 +146,10 @@ export function ExternalDbPanel({ onSwitched }: { onSwitched: () => void }) {
       </h2>
       <p className="mt-2 max-w-prose text-sm text-ink/60">
         Move your artworks, site text and photos into a database you own. The
-        built-in copy stays untouched, so you can switch back any time. Signing
-        in to this panel always stays here.
+        built-in copy stays untouched, so you can switch back any time. Once
+        it's live, your studio login lives in your database too — create your
+        account there on the sign-in screen and claim admin.
+
       </p>
 
       <div className="mt-4 rounded-xl bg-paper p-4 text-sm ring-1 ring-black/5">

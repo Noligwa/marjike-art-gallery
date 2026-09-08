@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import {
   artworksQuery,
+  isBuiltInAuthForced,
+  isExternalActive,
+  setBuiltInAuthForced,
   signImagePath,
   siteContentQuery,
   type Artwork,
@@ -60,18 +63,35 @@ const emptyForm = {
 };
 
 function AdminPage() {
-  const { session, isAdmin, loading } = useAuth();
+  const { client, session, isAdmin, loading } = useAuth();
+  const [builtin, setBuiltin] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("builtin") === "1" && !isBuiltInAuthForced()) {
+      setBuiltInAuthForced(true);
+      window.location.replace("/admin");
+      return;
+    }
+    setBuiltin(isBuiltInAuthForced());
+  }, []);
+
+  if (loading || !client) {
     return <Shell>Loading…</Shell>;
   }
   if (!session) {
-    return <SignIn />;
+    return <SignIn client={client} builtin={builtin} />;
   }
   if (!isAdmin) {
-    return <ClaimAdmin email={session.user.email ?? ""} />;
+    return <ClaimAdmin client={client} email={session.user.email ?? ""} />;
   }
-  return <AdminDashboard email={session.user.email ?? ""} />;
+  return (
+    <AdminDashboard
+      client={client}
+      email={session.user.email ?? ""}
+      builtin={builtin}
+    />
+  );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -82,7 +102,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SignIn() {
+function SignIn({
+  client,
+  builtin,
+}: {
+  client: SupabaseClient;
+  builtin: boolean;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -93,8 +119,8 @@ function SignIn() {
     setBusy(true);
     const fn =
       mode === "signin"
-        ? supabase.auth.signInWithPassword({ email, password })
-        : supabase.auth.signUp({
+        ? client.auth.signInWithPassword({ email, password })
+        : client.auth.signUp({
             email,
             password,
             options: { emailRedirectTo: `${window.location.origin}/admin` },
@@ -105,6 +131,7 @@ function SignIn() {
     else if (mode === "signup")
       toast.success("Account created. Check your email if confirmation is on.");
   };
+
 
   return (
     <Shell>
@@ -150,22 +177,42 @@ function SignIn() {
             ? "First time here? Create an account"
             : "Already have an account? Sign in"}
         </button>
+        {builtin ? (
+          <p className="mt-6 text-xs text-ink/50">
+            Rescue mode: signing in with the built-in account.
+          </p>
+        ) : (
+          <p className="mt-6 text-xs text-ink/50">
+            Locked out after switching databases?{" "}
+            <a href="/admin?builtin=1" className="text-sun underline">
+              Use the built-in login
+            </a>
+            .
+          </p>
+        )}
         <div className="mt-8 border-t border-ink/10 pt-5">
           <Link to="/" className="text-sm text-ink/60 hover:text-sun">
             ← Back to the site
           </Link>
         </div>
+
       </div>
     </Shell>
   );
 }
 
-function ClaimAdmin({ email }: { email: string }) {
+function ClaimAdmin({
+  client,
+  email,
+}: {
+  client: SupabaseClient;
+  email: string;
+}) {
   const [busy, setBusy] = useState(false);
 
   const claim = async () => {
     setBusy(true);
-    const { data, error } = await supabase.rpc("claim_first_admin");
+    const { data, error } = await client.rpc("claim_first_admin");
     setBusy(false);
     if (error) {
       toast.error(error.message);
@@ -193,7 +240,8 @@ function ClaimAdmin({ email }: { email: string }) {
           <Button onClick={claim} disabled={busy}>
             Claim studio admin
           </Button>
-          <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+          <Button variant="outline" onClick={() => client.auth.signOut()}>
+
             Sign out
           </Button>
         </div>
@@ -202,8 +250,20 @@ function ClaimAdmin({ email }: { email: string }) {
   );
 }
 
-function AdminDashboard({ email }: { email: string }) {
+function AdminDashboard({
+  client,
+  email,
+  builtin,
+}: {
+  client: SupabaseClient;
+  email: string;
+  builtin: boolean;
+}) {
   const qc = useQueryClient();
+  const { data: external = false } = useQuery({
+    queryKey: ["db-external-active"],
+    queryFn: isExternalActive,
+  });
   const { data: artworks = [] } = useQuery(artworksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
@@ -219,6 +279,22 @@ function AdminDashboard({ email }: { email: string }) {
 
   return (
     <Shell>
+      {builtin && (
+        <div className="mb-6 rounded-xl bg-card p-4 text-sm ring-1 ring-sun/40">
+          Built-in login (rescue mode). Use this only to change or switch back
+          the database connection below.{" "}
+          <button
+            type="button"
+            className="text-sun underline"
+            onClick={() => {
+              setBuiltInAuthForced(false);
+              window.location.replace("/admin");
+            }}
+          >
+            Leave rescue mode
+          </button>
+        </div>
+      )}
       <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-sun">Studio</p>
@@ -231,11 +307,12 @@ function AdminDashboard({ email }: { email: string }) {
           <Link to="/">
             <Button variant="outline">View site</Button>
           </Link>
-          <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+          <Button variant="outline" onClick={() => client.auth.signOut()}>
             Sign out
           </Button>
         </div>
       </div>
+
 
       <section className="rounded-2xl bg-card p-6 ring-1 ring-black/5">
         <div className="mb-6 flex items-center justify-between">
@@ -312,7 +389,7 @@ function AdminDashboard({ email }: { email: string }) {
 
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
 
-      <ExternalDbPanel onSwitched={refresh} />
+      <ExternalDbPanel onSwitched={refresh} manageable={builtin || !external} />
 
     </Shell>
   );
