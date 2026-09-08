@@ -121,6 +121,24 @@ export function ExternalDbPanel({
     copyOver.isPending ||
     toggle.isPending;
 
+  if (!manageable) {
+    return (
+      <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+        <h2 className="font-display text-2xl font-medium tracking-tight">
+          My database
+        </h2>
+        <p className="mt-2 max-w-prose text-sm text-ink/60">
+          Your own database is live, and you're signed in with an account that
+          lives there. To change the connection or switch back, open the{" "}
+          <a href="/admin?builtin=1" className="text-sun underline">
+            built-in login
+          </a>
+          .
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
       <h2 className="font-display text-2xl font-medium tracking-tight">
