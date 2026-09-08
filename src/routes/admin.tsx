@@ -60,18 +60,35 @@ const emptyForm = {
 };
 
 function AdminPage() {
-  const { session, isAdmin, loading } = useAuth();
+  const { client, session, isAdmin, loading } = useAuth();
+  const [builtin, setBuiltin] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("builtin") === "1" && !isBuiltInAuthForced()) {
+      setBuiltInAuthForced(true);
+      window.location.replace("/admin");
+      return;
+    }
+    setBuiltin(isBuiltInAuthForced());
+  }, []);
+
+  if (loading || !client) {
     return <Shell>Loading…</Shell>;
   }
   if (!session) {
-    return <SignIn />;
+    return <SignIn client={client} builtin={builtin} />;
   }
   if (!isAdmin) {
-    return <ClaimAdmin email={session.user.email ?? ""} />;
+    return <ClaimAdmin client={client} email={session.user.email ?? ""} />;
   }
-  return <AdminDashboard email={session.user.email ?? ""} />;
+  return (
+    <AdminDashboard
+      client={client}
+      email={session.user.email ?? ""}
+      builtin={builtin}
+    />
+  );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -82,7 +99,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SignIn() {
+function SignIn({
+  client,
+  builtin,
+}: {
+  client: SupabaseClient;
+  builtin: boolean;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -93,8 +116,8 @@ function SignIn() {
     setBusy(true);
     const fn =
       mode === "signin"
-        ? supabase.auth.signInWithPassword({ email, password })
-        : supabase.auth.signUp({
+        ? client.auth.signInWithPassword({ email, password })
+        : client.auth.signUp({
             email,
             password,
             options: { emailRedirectTo: `${window.location.origin}/admin` },
@@ -105,6 +128,7 @@ function SignIn() {
     else if (mode === "signup")
       toast.success("Account created. Check your email if confirmation is on.");
   };
+
 
   return (
     <Shell>
