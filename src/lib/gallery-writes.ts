@@ -11,9 +11,15 @@ async function writeClient() {
 /** Uploads an image to whichever database is live, returning its stored path. */
 export async function uploadImage(file: File, path: string): Promise<string> {
   const client = await writeClient();
-  const { error } = await client.storage
-    .from(BUCKET)
-    .upload(path, file, { contentType: file.type });
+  const put = () =>
+    client.storage.from(BUCKET).upload(path, file, { contentType: file.type });
+  let { error } = await put();
+  if (error && /bucket not found/i.test(error.message) && (await isExternalActive())) {
+    // Photo folder missing in the artist's database — create it, then retry.
+    const { provisionExternalDb } = await import("./external-db.functions");
+    await provisionExternalDb();
+    ({ error } = await put());
+  }
   if (error) throw error;
   return path;
 }
