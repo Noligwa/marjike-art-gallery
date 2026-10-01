@@ -11,6 +11,7 @@ import {
   isExternalActive,
   setBuiltInAuthForced,
   signImagePath,
+  signMediaPath,
   siteContentQuery,
   type Artwork,
   type ArtworkWithUrl,
@@ -21,6 +22,7 @@ import {
   saveArtwork,
   updateContent,
   uploadImage,
+  uploadMedia,
 } from "@/lib/gallery-writes";
 import { ExternalDbPanel } from "@/components/ExternalDbPanel";
 import { Button } from "@/components/ui/button";
@@ -387,11 +389,120 @@ function AdminDashboard({
 
       <ArtistPhotoEditor rows={contentRows} onSaved={refresh} />
 
+      <HeroVideoEditor rows={contentRows} onSaved={refresh} />
+
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
 
       <ExternalDbPanel onSwitched={refresh} manageable={builtin || !external} />
 
     </Shell>
+  );
+}
+
+function HeroVideoEditor({
+  rows,
+  onSaved,
+}: {
+  rows: SiteContentRow[];
+  onSaved: () => void;
+}) {
+  const currentPath =
+    rows.find((row) => row.key === "hero_video_path")?.value ?? "";
+  const [file, setFile] = useState<File | null>(null);
+  const [storedPreview, setStoredPreview] = useState("");
+  const [localPreview, setLocalPreview] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void signMediaPath(currentPath).then((url) => {
+      if (active) setStoredPreview(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentPath]);
+
+  useEffect(() => {
+    if (!file) {
+      setLocalPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setLocalPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("Please choose a video.");
+      if (!file.type.startsWith("video/")) {
+        throw new Error("Please choose a video file.");
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        throw new Error("The video must be smaller than 25 MB.");
+      }
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "mp4";
+      const path = await uploadMedia(
+        file,
+        `hero/${crypto.randomUUID()}.${ext}`,
+      );
+      await updateContent("hero_video_path", path);
+    },
+    onSuccess: () => {
+      toast.success("Landing page video updated.");
+      setFile(null);
+      onSaved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const preview = localPreview || storedPreview;
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        Landing page video
+      </h2>
+      <div className="mt-6 grid gap-6 sm:grid-cols-[minmax(0,280px)_1fr] sm:items-start">
+        <div className="overflow-hidden rounded-xl bg-paper p-3 ring-1 ring-black/5">
+          {preview ? (
+            <video
+              key={preview}
+              src={preview}
+              muted
+              loop
+              playsInline
+              controls
+              className="aspect-video w-full rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex aspect-video items-center justify-center rounded-lg bg-card text-center text-xs text-ink/50">
+              Using the default studio video
+            </div>
+          )}
+        </div>
+        <div className="grid gap-4">
+          <Field label="Choose a replacement video">
+            <Input
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            />
+          </Field>
+          <p className="text-sm leading-relaxed text-ink/60">
+            MP4 or WebM works best. Maximum file size: 25 MB.
+          </p>
+          <div>
+            <Button
+              disabled={!file || save.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending ? "Uploading…" : "Save landing page video"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -714,7 +825,10 @@ function SiteContentEditor({
   rows: SiteContentRow[];
   onSaved: () => void;
 }) {
-  const textRows = rows.filter((row) => !row.key.startsWith("artist_photo_"));
+  const textRows = rows.filter(
+    (row) =>
+      !row.key.startsWith("artist_photo_") && row.key !== "hero_video_path",
+  );
   const [values, setValues] = useState<Record<string, string>>({});
 
   useEffect(() => {

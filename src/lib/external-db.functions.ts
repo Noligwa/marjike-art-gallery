@@ -212,7 +212,9 @@ export const migrateToExternalDb = createServerFn({ method: "POST" })
         [
           ...rows.map((r) => r.image_path as string),
           ...(content.data ?? [])
-            .filter((r) => r.key === "artist_photo_path")
+            .filter((r) =>
+              ["artist_photo_path", "hero_video_path"].includes(r.key),
+            )
             .map((r) => r.value as string),
         ].filter(Boolean),
       ),
@@ -240,7 +242,7 @@ export const migrateToExternalDb = createServerFn({ method: "POST" })
     return {
       artworks: rows.length,
       content: (content.data ?? []).length,
-      photos: copied,
+      media: copied,
       failed,
     };
   });

@@ -8,8 +8,8 @@ async function writeClient() {
     : (supabase as unknown as Awaited<ReturnType<typeof getDataClient>>);
 }
 
-/** Uploads an image to whichever database is live, returning its stored path. */
-export async function uploadImage(file: File, path: string): Promise<string> {
+/** Uploads gallery media to whichever database is live, returning its stored path. */
+export async function uploadMedia(file: File, path: string): Promise<string> {
   const client = await writeClient();
   const put = () =>
     client.storage.from(BUCKET).upload(path, file, { contentType: file.type });
@@ -23,6 +23,8 @@ export async function uploadImage(file: File, path: string): Promise<string> {
   if (error) throw error;
   return path;
 }
+
+export const uploadImage = uploadMedia;
 
 export async function saveArtwork(
   payload: Record<string, unknown>,
@@ -47,7 +49,6 @@ export async function updateContent(key: string, value: string) {
   const client = await writeClient();
   const { error } = await client
     .from("site_content")
-    .update({ value })
-    .eq("key", key);
+    .upsert({ key, value }, { onConflict: "key" });
   if (error) throw error;
 }

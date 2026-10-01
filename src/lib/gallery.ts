@@ -117,6 +117,8 @@ export async function signImagePath(path: string): Promise<string> {
   return map[path] ?? "";
 }
 
+export const signMediaPath = signImagePath;
+
 export async function fetchArtworks(includeUnpublished = false) {
 
 
