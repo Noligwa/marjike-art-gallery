@@ -17,7 +17,7 @@ export async function uploadImage(file: File, path: string): Promise<string> {
   if (error && /bucket not found/i.test(error.message) && (await isExternalActive())) {
     // Photo folder missing in the artist's database — create it, then retry.
     const { provisionExternalDb } = await import("./external-db.functions");
-    await provisionExternalDb();
+    await provisionExternalDb().catch(() => undefined);
     ({ error } = await put());
   }
   if (error) throw error;
