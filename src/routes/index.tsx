@@ -8,6 +8,7 @@ import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 import {
   artworksQuery,
   signImagePath,
+  signMediaPath,
   siteContentQuery,
   toContentMap,
   type ArtworkWithUrl,
@@ -60,6 +61,7 @@ const FALLBACK = {
   artist_photo_caption: "In the studio · Porto, late afternoon",
   artist_photo_alt:
     "Portrait of Marjike in her Porto studio, wearing a linen shirt in warm afternoon light",
+  hero_video_path: "",
 };
 
 function Index() {
@@ -74,6 +76,12 @@ function Index() {
     queryKey: ["artist-photo", content.artist_photo_path],
     queryFn: () => signImagePath(content.artist_photo_path),
     enabled: Boolean(content.artist_photo_path),
+  });
+
+  const { data: uploadedVideoUrl } = useQuery({
+    queryKey: ["hero-video", content.hero_video_path],
+    queryFn: () => signMediaPath(content.hero_video_path),
+    enabled: Boolean(content.hero_video_path),
   });
 
 
@@ -115,7 +123,8 @@ function Index() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <video
-          src={studioVideo.url}
+          key={uploadedVideoUrl || studioVideo.url}
+          src={uploadedVideoUrl || studioVideo.url}
           autoPlay
           muted
           loop

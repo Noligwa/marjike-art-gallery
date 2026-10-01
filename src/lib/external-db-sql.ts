@@ -33,6 +33,10 @@ create table if not exists public.site_content (
   updated_at timestamptz not null default now()
 );
 
+insert into public.site_content (key, label, value, multiline, sort_order)
+values ('hero_video_path', 'Landing page video', '', false, 90)
+on conflict (key) do nothing;
+
 create table if not exists public.user_roles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

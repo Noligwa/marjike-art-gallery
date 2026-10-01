@@ -93,8 +93,8 @@ export function ExternalDbPanel({
     mutationFn: () => migrate(),
     onSuccess: (result) => {
       toast.success(
-        `Copied ${result.artworks} pieces, ${result.content} texts and ${result.photos} photos.` +
-          (result.failed.length ? ` ${result.failed.length} photos failed.` : ""),
+        `Copied ${result.artworks} pieces, ${result.content} texts and ${result.media} media files.` +
+          (result.failed.length ? ` ${result.failed.length} files failed.` : ""),
       );
       refresh();
     },
