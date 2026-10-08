@@ -110,6 +110,7 @@ export const saveExternalDb = createServerFn({ method: "POST" })
         url: z.string().url(),
         publishableKey: z.string().min(10),
         serviceKey: z.string().min(10).optional(),
+        accessToken: z.string().min(10).optional(),
       })
       .parse(input),
   )
@@ -150,7 +151,31 @@ export const saveExternalDb = createServerFn({ method: "POST" })
         { onConflict: "id" },
       );
     if (saveError) throw saveError;
-    return { ok: true };
+
+    let structure: "built" | "skipped" = "skipped";
+    if (data.accessToken) {
+      const ref = new URL(url).hostname.split(".")[0];
+      const { EXTERNAL_SETUP_SQL } = await import("./external-db-sql");
+      const res = await fetch(
+        `https://api.supabase.com/v1/projects/${ref}/database/query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${data.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: EXTERNAL_SETUP_SQL }),
+        },
+      );
+      if (!res.ok) {
+        const text = (await res.text()).slice(0, 300);
+        throw new Error(
+          `Connected, but building the database structure failed (${res.status}): ${text}`,
+        );
+      }
+      structure = "built";
+    }
+    return { ok: true, structure };
   });
 
 export const provisionExternalDb = createServerFn({ method: "POST" })
@@ -392,4 +417,70 @@ export const extListArtworks = createServerFn({ method: "GET" })
       });
     }
     return { rows, urls };
+  });
+
+/**
+ * Lets either allowed studio admin set a password for themselves or the other
+ * admin, on whichever database holds the studio login. Creates the account if
+ * it doesn't exist yet (already confirmed, so no email needed).
+ */
+export const setAdminPassword = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        accessToken: z.string().min(10),
+        target: z.enum(["builtin", "external"]),
+        email: z.string().email(),
+        password: z.string().min(8).max(72),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { isAllowedAdmin } = await import("./admins");
+    const email = data.email.trim().toLowerCase();
+    if (!isAllowedAdmin(email)) throw new Error("That email isn't a studio admin.");
+
+    let admin;
+    if (data.target === "external") {
+      const { externalClientFromConfig } = await import("./external-db.server");
+      admin = (await externalClientFromConfig()).client;
+    } else {
+      admin = (await import("@/integrations/supabase/client.server"))
+        .supabaseAdmin as unknown as typeof admin;
+    }
+    if (!admin) throw new Error("No database available.");
+
+    const { data: caller, error: callerError } = await admin.auth.getUser(
+      data.accessToken,
+    );
+    if (callerError || !isAllowedAdmin(caller.user?.email)) {
+      throw new Error("Only a studio admin can do this.");
+    }
+
+    let found: { id: string } | undefined;
+    for (let page = 1; page <= 20 && !found; page++) {
+      const { data: list, error } = await admin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (error) throw error;
+      found = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (list.users.length < 200) break;
+    }
+
+    if (found) {
+      const { error } = await admin.auth.admin.updateUserById(found.id, {
+        password: data.password,
+        email_confirm: true,
+      });
+      if (error) throw error;
+      return { created: false };
+    }
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+    });
+    if (error) throw error;
+    return { created: true };
   });
