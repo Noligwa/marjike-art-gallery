@@ -12,6 +12,17 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { useQuery } from "@tanstack/react-query";
+import { siteContentQuery, toContentMap } from "@/lib/gallery";
+import { applyTheme } from "@/lib/theme";
+
+function ThemeApplier() {
+  const { data } = useQuery(siteContentQuery());
+  useEffect(() => {
+    if (data) applyTheme(toContentMap(data));
+  }, [data]);
+  return null;
+}
 
 function NotFoundComponent() {
   return (
@@ -137,6 +148,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <ThemeApplier />
       <Outlet />
       <Toaster />
     </QueryClientProvider>
