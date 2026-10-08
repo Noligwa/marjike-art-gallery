@@ -42,8 +42,8 @@ export function applyTheme(content: Record<string, string>) {
     if (value && isHex(value)) root.style.setProperty(def.css, value);
     else root.style.removeProperty(def.css);
   }
-  const display = content.font_display || DEFAULT_FONTS.font_display;
-  const body = content.font_body || DEFAULT_FONTS.font_body;
+  const display = content["font_display"] || DEFAULT_FONTS.font_display;
+  const body = content["font_body"] || DEFAULT_FONTS.font_body;
   root.style.setProperty("--font-display", `"${display}", Georgia, serif`);
   root.style.setProperty("--font-body", `"${body}", system-ui, sans-serif`);
   loadFonts([display, body]);

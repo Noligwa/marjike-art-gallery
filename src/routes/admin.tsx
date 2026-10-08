@@ -978,8 +978,8 @@ function ThemeEditor({
         saved[k] || THEME_KEYS[k].default,
       ]),
     ),
-    font_display: saved.font_display || DEFAULT_FONTS.font_display,
-    font_body: saved.font_body || DEFAULT_FONTS.font_body,
+    font_display: saved["font_display"] || DEFAULT_FONTS.font_display,
+    font_body: saved["font_body"] || DEFAULT_FONTS.font_body,
   });
   const [values, setValues] = useState<Record<string, string>>(initial);
 
@@ -1055,7 +1055,7 @@ function ThemeEditor({
         <Field label="Heading font">
           <select
             className={selectClass}
-            value={values.font_display}
+            value={values["font_display"]}
             onChange={(e) => update("font_display", e.target.value)}
           >
             {DISPLAY_FONTS.map((f) => (
@@ -1068,7 +1068,7 @@ function ThemeEditor({
         <Field label="Body text font">
           <select
             className={selectClass}
-            value={values.font_body}
+            value={values["font_body"]}
             onChange={(e) => update("font_body", e.target.value)}
           >
             {BODY_FONTS.map((f) => (
