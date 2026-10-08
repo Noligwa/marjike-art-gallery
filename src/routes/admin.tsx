@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +31,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { ADMIN_EMAILS, isAllowedAdmin } from "@/lib/admins";
+import { setAdminPassword } from "@/lib/external-db.functions";
+import {
+  BODY_FONTS,
+  DEFAULT_FONTS,
+  DISPLAY_FONTS,
+  THEME_KEYS,
+  applyTheme,
+  loadFonts,
+  type ThemeKey,
+} from "@/lib/theme";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -84,6 +96,23 @@ function AdminPage() {
   if (!session) {
     return <SignIn client={client} builtin={builtin} />;
   }
+  if (!isAllowedAdmin(session.user.email)) {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-[520px] rounded-2xl bg-card p-8 ring-1 ring-black/5">
+          <h1 className="font-display text-3xl font-medium tracking-tight">
+            No access
+          </h1>
+          <p className="mt-4 text-ink/70">
+            {session.user.email} isn't allowed into the studio.
+          </p>
+          <Button className="mt-6" variant="outline" onClick={() => client.auth.signOut()}>
+            Sign out
+          </Button>
+        </div>
+      </Shell>
+    );
+  }
   if (!isAdmin) {
     return <ClaimAdmin client={client} email={session.user.email ?? ""} />;
   }
@@ -116,8 +145,24 @@ function SignIn({
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
 
+  const forgot = async () => {
+    if (!isAllowedAdmin(email)) {
+      toast.error("Enter one of the two studio emails first.");
+      return;
+    }
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/admin`,
+    });
+    if (error) toast.error(error.message);
+    else toast.success("Reset link sent — check your inbox and spam folder.");
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!isAllowedAdmin(email)) {
+      toast.error("This email isn't allowed into the studio.");
+      return;
+    }
     setBusy(true);
     const fn =
       mode === "signin"
@@ -170,6 +215,13 @@ function SignIn({
             {mode === "signin" ? "Sign in" : "Sign up"}
           </Button>
         </form>
+        <button
+          type="button"
+          className="mt-5 mr-4 text-sm text-ink/60 underline-offset-4 hover:text-sun hover:underline"
+          onClick={forgot}
+        >
+          Forgot password?
+        </button>
         <button
           type="button"
           className="mt-5 text-sm text-ink/60 underline-offset-4 hover:text-sun hover:underline"
@@ -392,6 +444,10 @@ function AdminDashboard({
       <HeroVideoEditor rows={contentRows} onSaved={refresh} />
 
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
+
+      <ThemeEditor rows={contentRows} onSaved={refresh} />
+
+      <PasswordPanel client={client} email={email} builtin={builtin} />
 
       <ExternalDbPanel onSwitched={refresh} manageable={builtin || !external} />
 
@@ -827,7 +883,10 @@ function SiteContentEditor({
 }) {
   const textRows = rows.filter(
     (row) =>
-      !row.key.startsWith("artist_photo_") && row.key !== "hero_video_path",
+      !row.key.startsWith("artist_photo_") &&
+      !row.key.startsWith("theme_") &&
+      !row.key.startsWith("font_") &&
+      row.key !== "hero_video_path",
   );
   const [values, setValues] = useState<Record<string, string>>({});
 
@@ -901,5 +960,228 @@ function Field({
       <Label>{label}</Label>
       {children}
     </div>
+  );
+}
+
+function ThemeEditor({
+  rows,
+  onSaved,
+}: {
+  rows: SiteContentRow[];
+  onSaved: () => void;
+}) {
+  const saved = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const initial = () => ({
+    ...Object.fromEntries(
+      (Object.keys(THEME_KEYS) as ThemeKey[]).map((k) => [
+        k,
+        saved[k] || THEME_KEYS[k].default,
+      ]),
+    ),
+    font_display: saved.font_display || DEFAULT_FONTS.font_display,
+    font_body: saved.font_body || DEFAULT_FONTS.font_body,
+  });
+  const [values, setValues] = useState<Record<string, string>>(initial);
+
+  useEffect(() => {
+    setValues(initial());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  useEffect(() => {
+    loadFonts([...DISPLAY_FONTS, ...BODY_FONTS]);
+  }, []);
+
+  const update = (key: string, value: string) => {
+    const next = { ...values, [key]: value };
+    setValues(next);
+    applyTheme(next); // live preview
+  };
+
+  const save = useMutation({
+    mutationFn: async (next: Record<string, string>) => {
+      for (const [key, value] of Object.entries(next)) {
+        if ((saved[key] ?? "") === value) continue;
+        await updateContent(key, value);
+      }
+    },
+    onSuccess: () => {
+      toast.success("Colours and fonts saved.");
+      onSaved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const reset = () => {
+    const defaults = {
+      ...Object.fromEntries(
+        (Object.keys(THEME_KEYS) as ThemeKey[]).map((k) => [k, THEME_KEYS[k].default]),
+      ),
+      ...DEFAULT_FONTS,
+    };
+    setValues(defaults);
+    applyTheme(defaults);
+  };
+
+  const selectClass =
+    "h-10 w-full rounded-md border border-input bg-paper px-3 text-sm";
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        Colours & fonts
+      </h2>
+      <p className="mt-2 text-sm text-ink/60">
+        Changes preview right away. Press save to make them live for visitors.
+      </p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {(Object.keys(THEME_KEYS) as ThemeKey[]).map((key) => (
+          <Field key={key} label={THEME_KEYS[key].label}>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                aria-label={THEME_KEYS[key].label}
+                value={values[key]}
+                onChange={(e) => update(key, e.target.value)}
+                className="h-10 w-14 cursor-pointer rounded border border-input bg-transparent"
+              />
+              <Input
+                value={values[key]}
+                onChange={(e) => update(key, e.target.value)}
+              />
+            </div>
+          </Field>
+        ))}
+        <Field label="Heading font">
+          <select
+            className={selectClass}
+            value={values.font_display}
+            onChange={(e) => update("font_display", e.target.value)}
+          >
+            {DISPLAY_FONTS.map((f) => (
+              <option key={f} value={f} style={{ fontFamily: f }}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Body text font">
+          <select
+            className={selectClass}
+            value={values.font_body}
+            onChange={(e) => update("font_body", e.target.value)}
+          >
+            {BODY_FONTS.map((f) => (
+              <option key={f} value={f} style={{ fontFamily: f }}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Button disabled={save.isPending} onClick={() => save.mutate(values)}>
+          {save.isPending ? "Saving…" : "Save colours & fonts"}
+        </Button>
+        <Button variant="outline" onClick={reset}>
+          Back to original look
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function PasswordPanel({
+  client,
+  email,
+  builtin,
+}: {
+  client: SupabaseClient;
+  email: string;
+  builtin: boolean;
+}) {
+  const setPassword = useServerFn(setAdminPassword);
+  const [target, setTarget] = useState(email.toLowerCase());
+  const [password, setPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (password.length < 8) throw new Error("Use at least 8 characters.");
+      if (password !== confirm) throw new Error("The two passwords don't match.");
+      const { data } = await client.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Please sign in again.");
+      const external = !builtin && (await isExternalActive());
+      return setPassword({
+        data: {
+          accessToken: token,
+          target: external ? "external" : "builtin",
+          email: target,
+          password,
+        },
+      });
+    },
+    onSuccess: (result) => {
+      setPw("");
+      setConfirm("");
+      toast.success(
+        result.created
+          ? `Account created for ${target} with that password.`
+          : `Password updated for ${target}.`,
+      );
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        Studio logins & passwords
+      </h2>
+      <p className="mt-2 text-sm text-ink/60">
+        Only these two emails can open the studio. Set a new password for
+        yourself or the other person — if their account doesn't exist yet, it's
+        created ready to use.
+      </p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <Field label="Login">
+          <select
+            className="h-10 w-full rounded-md border border-input bg-paper px-3 text-sm"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+          >
+            {ADMIN_EMAILS.map((e) => (
+              <option key={e} value={e}>
+                {e}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="New password">
+          <Input
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPw(e.target.value)}
+          />
+        </Field>
+        <Field label="Repeat password">
+          <Input
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+        </Field>
+      </div>
+      <Button
+        className="mt-6"
+        disabled={save.isPending || !password}
+        onClick={() => save.mutate()}
+      >
+        {save.isPending ? "Saving…" : "Set password"}
+      </Button>
+    </section>
   );
 }

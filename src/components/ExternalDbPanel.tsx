@@ -40,6 +40,7 @@ export function ExternalDbPanel({
   const [url, setUrl] = useState("");
   const [publishableKey, setPublishableKey] = useState("");
   const [serviceKey, setServiceKey] = useState("");
+  const [accessToken, setAccessToken] = useState("");
   const [showSql, setShowSql] = useState(false);
 
   useEffect(() => {
@@ -61,11 +62,17 @@ export function ExternalDbPanel({
           url,
           publishableKey,
           ...(serviceKey ? { serviceKey } : {}),
+          ...(accessToken ? { accessToken } : {}),
         },
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setServiceKey("");
-      toast.success("Connected — your database answered.");
+      setAccessToken("");
+      toast.success(
+        result.structure === "built"
+          ? "Connected, and your database structure is built."
+          : "Connected — your database answered.",
+      );
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -201,6 +208,24 @@ export function ExternalDbPanel({
             value={serviceKey}
             onChange={(e) => setServiceKey(e.target.value)}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="db-token">
+            Account access token (builds the database structure for you)
+          </Label>
+          <Input
+            id="db-token"
+            type="password"
+            autoComplete="off"
+            placeholder="sbp_…"
+            value={accessToken}
+            onChange={(e) => setAccessToken(e.target.value)}
+          />
+          <p className="text-xs text-ink/50">
+            Create one in your Supabase account under Account → Access Tokens.
+            It's used once while testing and never saved.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
