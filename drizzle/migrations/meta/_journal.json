@@ -8,6 +8,13 @@
       "when": 1791472531406,
       "tag": "0000_allowlisted_admins",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792013309754,
+      "tag": "0001_private_settings",
+      "breakpoints": true
     }
   ]
 }

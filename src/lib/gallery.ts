@@ -92,17 +92,21 @@ export async function isExternalActive() {
 export async function signImagePaths(
   paths: string[],
 ): Promise<Record<string, string>> {
-  const unique = Array.from(new Set(paths.filter(Boolean)));
-  if (unique.length === 0) return {};
+  const map: Record<string, string> = {};
+  // Files kept on the artist's own web hosting are already full web addresses.
+  for (const p of paths) if (/^https?:\/\//i.test(p)) map[p] = p;
+  const unique = Array.from(
+    new Set(paths.filter((p) => p && !/^https?:\/\//i.test(p))),
+  );
+  if (unique.length === 0) return map;
 
   const client = await getDataClient();
   const { data, error } = await client.storage
     .from(BUCKET)
     .createSignedUrls(unique, SIGNED_URL_TTL);
 
-  if (error || !data) return {};
+  if (error || !data) return map;
 
-  const map: Record<string, string> = {};
   data.forEach((entry, index) => {
     const path = entry.path ?? unique[index];
     if (path && entry.signedUrl) map[path] = entry.signedUrl;

@@ -26,6 +26,7 @@ import {
   uploadMedia,
 } from "@/lib/gallery-writes";
 import { ExternalDbPanel } from "@/components/ExternalDbPanel";
+import { StoragePanel } from "@/components/StoragePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -446,6 +447,8 @@ function AdminDashboard({
       <SiteContentEditor rows={contentRows} onSaved={refresh} />
 
       <ThemeEditor rows={contentRows} onSaved={refresh} />
+
+      <StoragePanel />
 
       <PasswordPanel client={client} email={email} builtin={builtin} />
 
@@ -885,6 +888,7 @@ function SiteContentEditor({
     (row) =>
       !row.key.startsWith("artist_photo_") &&
       !row.key.startsWith("theme_") &&
+      !row.key.startsWith("storage_") &&
       !row.key.startsWith("font_") &&
       row.key !== "hero_video_path",
   );

@@ -156,4 +156,13 @@ drop policy if exists "Admins can delete artwork files" on storage.objects;
 create policy "Admins can delete artwork files" on storage.objects
 for delete to authenticated
 using (bucket_id = 'artworks' and public.has_role(auth.uid(), 'admin'));
+
+-- Admin-only settings (e.g. cPanel upload key).
+create table if not exists public.private_settings (key text primary key, value text not null default '', updated_at timestamptz not null default now());
+grant select, insert, update, delete on public.private_settings to authenticated;
+grant all on public.private_settings to service_role;
+alter table public.private_settings enable row level security;
+drop policy if exists "Admins manage private settings" on public.private_settings;
+create policy "Admins manage private settings" on public.private_settings for all to authenticated
+using (public.has_role(auth.uid(), 'admin')) with check (public.has_role(auth.uid(), 'admin'));
 `;
