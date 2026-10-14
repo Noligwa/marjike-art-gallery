@@ -9,7 +9,79 @@ async function writeClient() {
 }
 
 /** Uploads gallery media to whichever database is live, returning its stored path. */
+export type StorageSettings = {
+  provider: "cloud" | "cpanel";
+  uploadUrl: string;
+  publicUrl: string;
+  key: string;
+};
+
+const SETTING_KEYS = {
+  provider: "storage_provider",
+  uploadUrl: "storage_cpanel_upload_url",
+  publicUrl: "storage_cpanel_public_url",
+  key: "storage_cpanel_key",
+} as const;
+
+export async function getStorageSettings(): Promise<StorageSettings> {
+  const client = await writeClient();
+  const { data } = await client.from("private_settings").select("key,value");
+  const m = Object.fromEntries(
+    ((data ?? []) as { key: string; value: string }[]).map((r) => [r.key, r.value]),
+  );
+  return {
+    provider: m[SETTING_KEYS.provider] === "cpanel" ? "cpanel" : "cloud",
+    uploadUrl: m[SETTING_KEYS.uploadUrl] ?? "",
+    publicUrl: m[SETTING_KEYS.publicUrl] ?? "",
+    key: m[SETTING_KEYS.key] ?? "",
+  };
+}
+
+export async function saveStorageSettings(s: StorageSettings) {
+  const client = await writeClient();
+  const rows = (Object.keys(SETTING_KEYS) as (keyof StorageSettings)[]).map((k) => ({
+    key: SETTING_KEYS[k],
+    value: String(s[k] ?? "").trim(),
+  }));
+  const { error } = await client
+    .from("private_settings")
+    .upsert(rows as never, { onConflict: "key" });
+  if (error) throw error;
+}
+
+/** Sends a file to the upload script on the artist's web hosting; returns its web address. */
+export async function uploadToCpanel(
+  s: StorageSettings,
+  file: File | Blob,
+  path: string,
+): Promise<string> {
+  if (!s.uploadUrl || !s.key) throw new Error("Web hosting storage is not set up yet.");
+  const form = new FormData();
+  form.append("file", file, path.split("/").pop() ?? "file");
+  form.append("path", path);
+  let res: Response;
+  try {
+    res = await fetch(s.uploadUrl, {
+      method: "POST",
+      headers: { "X-Upload-Key": s.key },
+      body: form,
+    });
+  } catch {
+    throw new Error("Could not reach the upload script on your web hosting.");
+  }
+  const json = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+  if (!res.ok || !json?.url) {
+    throw new Error(json?.error || `Web hosting upload failed (${res.status}).`);
+  }
+  if (s.publicUrl && !/^https?:\/\//i.test(json.url)) {
+    return s.publicUrl.replace(/\/+$/, "") + "/" + json.url.replace(/^\/+/, "");
+  }
+  return json.url;
+}
+
 export async function uploadMedia(file: File, path: string): Promise<string> {
+  const settings = await getStorageSettings().catch(() => null);
+  if (settings?.provider === "cpanel") return uploadToCpanel(settings, file, path);
   const client = await writeClient();
   const put = () =>
     client.storage.from(BUCKET).upload(path, file, { contentType: file.type });
@@ -42,7 +114,7 @@ export async function deleteArtwork(id: string, imagePath: string) {
   const client = await writeClient();
   const { error } = await client.from("artworks").delete().eq("id", id);
   if (error) throw error;
-  if (imagePath) await client.storage.from(BUCKET).remove([imagePath]);
+  if (imagePath && !/^https?:\/\//i.test(imagePath)) await client.storage.from(BUCKET).remove([imagePath]);
 }
 
 export async function updateContent(key: string, value: string) {
