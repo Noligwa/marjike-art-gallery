@@ -95,6 +95,42 @@ export type Database = {
         }
         Relationships: []
       }
+      inquiries: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          phone: string
+          replied_at: string | null
+          reply: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string
+          replied_at?: string | null
+          reply?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string
+          replied_at?: string | null
+          reply?: string
+          status?: string
+        }
+        Relationships: []
+      }
       private_settings: {
         Row: {
           key: string
