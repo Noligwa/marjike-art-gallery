@@ -87,7 +87,10 @@ export async function isExternalActive() {
 }
 
 
-/** Creates browser-usable URLs for private storage objects. */
+/**
+ * Creates browser-usable URLs for private storage objects. Signing happens on
+ * the site's server, so the browser never needs direct access to the bucket.
+ */
 export async function signImagePaths(
   paths: string[],
 ): Promise<Record<string, string>> {
@@ -99,18 +102,9 @@ export async function signImagePaths(
   );
   if (unique.length === 0) return map;
 
-  const client = await getDataClient();
-  const { data, error } = await client.storage
-    .from(BUCKET)
-    .createSignedUrls(unique, SIGNED_URL_TTL);
-
-  if (error || !data) return map;
-
-  data.forEach((entry, index) => {
-    const path = entry.path ?? unique[index];
-    if (path && entry.signedUrl) map[path] = entry.signedUrl;
-  });
-  return map;
+  const { signMediaPaths } = await import("./media-sign.functions");
+  const signed = await signMediaPaths({ data: { paths: unique } });
+  return { ...map, ...signed };
 }
 
 /** Signs a single stored image path, or returns "" when there is none. */
