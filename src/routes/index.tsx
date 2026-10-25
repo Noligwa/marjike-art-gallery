@@ -330,6 +330,90 @@ function Index() {
   );
 }
 
+function CommissionForm() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  if (done) {
+    return (
+      <div className="rounded-2xl border border-ink/15 bg-card p-6 text-sm leading-relaxed text-ink/70">
+        Thank you — your message reached the studio. Marjike will reply by
+        email as soon as she can.
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-4 rounded-2xl border border-ink/15 bg-card p-6"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setError("");
+        setSending(true);
+        try {
+          await submitInquiry({ data: { name, email, message } });
+          setDone(true);
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Could not send — please try again.",
+          );
+        } finally {
+          setSending(false);
+        }
+      }}
+    >
+      <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.2em] text-ink/60">
+        Name
+        <input
+          required
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-11 rounded-lg border border-ink/15 bg-paper px-3 text-sm normal-case tracking-normal text-ink"
+        />
+      </label>
+      <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.2em] text-ink/60">
+        Email
+        <input
+          type="email"
+          required
+          maxLength={200}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="h-11 rounded-lg border border-ink/15 bg-paper px-3 text-sm normal-case tracking-normal text-ink"
+        />
+      </label>
+      <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.2em] text-ink/60">
+        Message
+        <textarea
+          required
+          minLength={10}
+          maxLength={4000}
+          rows={5}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Tell me about the piece you have in mind — size, colours, feeling."
+          className="rounded-lg border border-ink/15 bg-paper p-3 text-sm normal-case leading-relaxed tracking-normal text-ink"
+        />
+      </label>
+      {error && <p className="text-sm text-sun">{error}</p>}
+      <button
+        type="submit"
+        disabled={sending}
+        className="rounded-full bg-ink px-7 py-4 text-center text-sm font-medium text-paper ring-1 ring-inset ring-ink hover:bg-sun hover:ring-sun disabled:opacity-60"
+      >
+        {sending ? "Sending…" : "Send to the studio"}
+      </button>
+    </form>
+  );
+}
+
 function Lightbox({
   artwork,
   onClose,

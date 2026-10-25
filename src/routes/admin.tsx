@@ -440,6 +440,8 @@ function AdminDashboard({
         />
       )}
 
+      <InquiryInbox client={client} />
+
       <ArtistPhotoEditor rows={contentRows} onSaved={refresh} />
 
       <HeroVideoEditor rows={contentRows} onSaved={refresh} />
