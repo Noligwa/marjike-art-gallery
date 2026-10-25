@@ -88,15 +88,35 @@ export const submitInquiry = createServerFn({ method: "POST" })
         "Please wait a minute before sending another message.",
       );
     }
-    recentSubmissions.set(ip, now);
 
-    const client = await inquiryClient();
-    const { error } = await client.from("inquiries").insert({
+    const row = {
       name: data.name,
       email: data.email.toLowerCase(),
       phone: data.phone ?? "",
       message: data.message,
-    });
-    if (error) throw new Error(error.message);
+    };
+
+    const client = await inquiryClient();
+    const { error } = await client.from("inquiries").insert(row);
+
+    if (
+      error &&
+      /could not find the table|does not exist|schema cache/i.test(
+        error.message,
+      )
+    ) {
+      // The artist's database doesn't hold the inbox yet — keep the message
+      // safe in the site's own database instead of losing it.
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const { error: fallbackError } = await supabaseAdmin
+        .from("inquiries")
+        .insert(row);
+      if (fallbackError) throw new Error(fallbackError.message);
+    } else if (error) {
+      throw new Error(error.message);
+    }
+    recentSubmissions.set(ip, now);
     return { ok: true };
   });
