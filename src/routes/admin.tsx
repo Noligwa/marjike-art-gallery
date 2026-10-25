@@ -1218,7 +1218,10 @@ function InquiryInbox({ client }: { client: SupabaseClient }) {
   const [draft, setDraft] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const { data: items = [] } = useQuery({
+  const {
+    data: items = [],
+    error: listError,
+  } = useQuery({
     queryKey: ["inquiries"],
     queryFn: async () => {
       const { data, error } = await client
