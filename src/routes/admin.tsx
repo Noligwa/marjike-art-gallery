@@ -1279,7 +1279,7 @@ function InquiryInbox({ client }: { client: SupabaseClient }) {
                 <p className="truncate text-sm text-ink/60">{row.email}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className={STATUS_STYLES[row.status] ?? STATUS_STYLES.replied}>
+                <span className={STATUS_STYLES[row.status] ?? STATUS_STYLES["replied"]}>
                   {row.status}
                 </span>
                 <span className="text-xs text-clay">
