@@ -88,7 +88,6 @@ export const submitInquiry = createServerFn({ method: "POST" })
         "Please wait a minute before sending another message.",
       );
     }
-    recentSubmissions.set(ip, now);
 
     const row = {
       name: data.name,
