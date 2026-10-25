@@ -13,6 +13,7 @@ import {
   toContentMap,
   type ArtworkWithUrl,
 } from "@/lib/gallery";
+import { submitInquiry } from "@/lib/inquiries.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -294,12 +295,7 @@ function Index() {
             </p>
           </div>
           <div className="flex flex-col gap-4">
-            <a
-              href={`mailto:${content.contact_email}`}
-              className="rounded-full bg-ink px-7 py-4 text-center text-sm font-medium text-paper ring-1 ring-inset ring-ink hover:bg-sun hover:ring-sun"
-            >
-              {content.contact_email}
-            </a>
+            <CommissionForm />
             <a
               href={content.instagram_url}
               target="_blank"
