@@ -1191,3 +1191,188 @@ function PasswordPanel({
     </section>
   );
 }
+
+type InquiryRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  reply: string;
+  status: string;
+  created_at: string;
+  replied_at: string | null;
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  new: "rounded-full bg-sun/15 px-2.5 py-0.5 text-xs uppercase tracking-widest text-sun",
+  replied:
+    "rounded-full bg-ink/5 px-2.5 py-0.5 text-xs uppercase tracking-widest text-ink/60",
+  archived:
+    "rounded-full bg-ink/5 px-2.5 py-0.5 text-xs uppercase tracking-widest text-clay",
+};
+
+function InquiryInbox({ client }: { client: SupabaseClient }) {
+  const qc = useQueryClient();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const { data: items = [] } = useQuery({
+    queryKey: ["inquiries"],
+    queryFn: async () => {
+      const { data, error } = await client
+        .from("inquiries")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as InquiryRow[];
+    },
+  });
+
+  const save = async (
+    row: InquiryRow,
+    patch: Partial<InquiryRow>,
+    ok: string,
+  ) => {
+    setBusyId(row.id);
+    const { error } = await client
+      .from("inquiries")
+      .update(patch as never)
+      .eq("id", row.id);
+    setBusyId(null);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(ok);
+      setOpenId(null);
+      setDraft("");
+      void qc.invalidateQueries({ queryKey: ["inquiries"] });
+    }
+  };
+
+  const newCount = items.filter((row) => row.status === "new").length;
+
+  return (
+    <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+      <h2 className="font-display text-2xl font-medium tracking-tight">
+        Commission inquiries ({items.length}){newCount > 0 ? ` · ${newCount} new` : ""}
+      </h2>
+      <p className="mt-2 text-sm text-ink/60">
+        Messages from the commission form on the site. The visitors' email
+        addresses stay private — they are only visible here.
+      </p>
+      {items.length === 0 && (
+        <p className="mt-4 text-sm text-ink/60">No messages yet.</p>
+      )}
+      <div className="mt-6 flex flex-col gap-3">
+        {items.map((row) => (
+          <div
+            key={row.id}
+            className="rounded-xl bg-paper p-4 ring-1 ring-black/5"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium text-ink">
+                  {row.name}
+                  {row.phone ? ` · ${row.phone}` : ""}
+                </p>
+                <p className="truncate text-sm text-ink/60">{row.email}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={STATUS_STYLES[row.status] ?? STATUS_STYLES.replied}>
+                  {row.status}
+                </span>
+                <span className="text-xs text-clay">
+                  {new Date(row.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink/80">
+              {row.message}
+            </p>
+            {row.reply && (
+              <div className="mt-3 rounded-lg bg-card p-3 text-sm text-ink/70">
+                <span className="text-xs uppercase tracking-widest text-clay">
+                  Your reply
+                </span>
+                <p className="mt-1 whitespace-pre-wrap">{row.reply}</p>
+              </div>
+            )}
+            {openId === row.id ? (
+              <div className="mt-3 flex flex-col gap-2">
+                <Textarea
+                  rows={4}
+                  placeholder="Write your reply…"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    disabled={!draft.trim() || busyId === row.id}
+                    onClick={() =>
+                      save(
+                        row,
+                        {
+                          reply: draft.trim(),
+                          status: "replied",
+                          replied_at: new Date().toISOString(),
+                        },
+                        "Reply saved.",
+                      )
+                    }
+                  >
+                    {busyId === row.id ? "Saving…" : "Save reply"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setOpenId(null);
+                      setDraft("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 flex gap-4 text-sm">
+                {!row.reply && (
+                  <button
+                    type="button"
+                    className="text-sun hover:underline"
+                    onClick={() => {
+                      setOpenId(row.id);
+                      setDraft("");
+                    }}
+                  >
+                    Reply
+                  </button>
+                )}
+                {row.status === "archived" ? (
+                  <button
+                    type="button"
+                    className="text-ink/60 hover:underline"
+                    onClick={() => save(row, { status: "new" }, "Restored.")}
+                  >
+                    Restore
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-ink/60 hover:underline"
+                    disabled={busyId === row.id}
+                    onClick={() =>
+                      save(row, { status: "archived" }, "Moved to archive.")
+                    }
+                  >
+                    Archive
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
