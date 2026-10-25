@@ -117,5 +117,6 @@ export const submitInquiry = createServerFn({ method: "POST" })
     } else if (error) {
       throw new Error(error.message);
     }
+    recentSubmissions.set(ip, now);
     return { ok: true };
   });
