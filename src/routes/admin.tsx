@@ -1264,7 +1264,24 @@ function InquiryInbox({ client }: { client: SupabaseClient }) {
         Messages from the commission form on the site. The visitors' email
         addresses stay private — they are only visible here.
       </p>
-      {items.length === 0 && (
+      {listError &&
+        /could not find the table|does not exist|schema cache/i.test(
+          listError.message,
+        ) && (
+          <p className="mt-4 text-sm text-sun">
+            Your own database doesn't hold the inbox yet. Open the{" "}
+            <strong>My database</strong> section below, copy the setup text
+            once more and run it in your project — then this inbox reads and
+            writes there.
+          </p>
+        )}
+      {listError &&
+        !/could not find the table|does not exist|schema cache/i.test(
+          listError.message,
+        ) && (
+          <p className="mt-4 text-sm text-sun">{listError.message}</p>
+        )}
+      {!listError && items.length === 0 && (
         <p className="mt-4 text-sm text-ink/60">No messages yet.</p>
       )}
       <div className="mt-6 flex flex-col gap-3">
