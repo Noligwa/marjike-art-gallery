@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import {
   artworksQuery,
+  commissionWorksQuery,
   isBuiltInAuthForced,
   isExternalActive,
   setBuiltInAuthForced,
@@ -16,11 +17,14 @@ import {
   siteContentQuery,
   type Artwork,
   type ArtworkWithUrl,
+  type CommissionWorkWithUrl,
   type SiteContentRow,
 } from "@/lib/gallery";
 import {
   deleteArtwork,
+  deleteCommissionWork,
   saveArtwork,
+  saveCommissionWork,
   updateContent,
   uploadImage,
   uploadMedia,
@@ -320,15 +324,22 @@ function AdminDashboard({
     queryFn: isExternalActive,
   });
   const { data: artworks = [] } = useQuery(artworksQuery(true));
+  const { data: commissionWorks = [] } = useQuery(commissionWorksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingCommission, setEditingCommission] =
+    useState<CommissionWorkWithUrl | null>(null);
+  const [creatingCommission, setCreatingCommission] = useState(false);
 
   const nextOrder =
     artworks.reduce((max, work) => Math.max(max, work.sort_order), 0) + 1;
+  const nextCommissionOrder =
+    commissionWorks.reduce((max, work) => Math.max(max, work.sort_order), 0) + 1;
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["artworks"] });
+    void qc.invalidateQueries({ queryKey: ["commission-works"] });
     void qc.invalidateQueries({ queryKey: ["site-content"] });
   };
 
