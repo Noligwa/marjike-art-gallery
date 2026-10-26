@@ -163,6 +163,36 @@ export function toContentMap(rows: SiteContentRow[]): Record<string, string> {
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
+export type CommissionWork = Artwork;
+
+export type CommissionWorkWithUrl = ArtworkWithUrl;
+
+export const commissionWorksQuery = (includeUnpublished = false) => ({
+  queryKey: ["commission-works", includeUnpublished] as const,
+  queryFn: () => fetchCommissionWorks(includeUnpublished),
+});
+
+export async function fetchCommissionWorks(includeUnpublished = false) {
+  const client = await getDataClient();
+  let query = client
+    .from("commission_works")
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (!includeUnpublished) query = query.eq("published", true);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const works = (data ?? []) as CommissionWork[];
+  const urls = await signImagePaths(works.map((w) => w.image_path));
+  return works.map((work) => ({
+    ...work,
+    imageUrl: urls[work.image_path] ?? "",
+  }));
+}
+
 export const artworksQuery = (includeUnpublished = false) => ({
   queryKey: ["artworks", includeUnpublished] as const,
   queryFn: () => fetchArtworks(includeUnpublished),

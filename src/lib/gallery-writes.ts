@@ -110,6 +110,25 @@ export async function saveArtwork(
   if (error) throw error;
 }
 
+export async function saveCommissionWork(
+  payload: Record<string, unknown>,
+  id?: string,
+) {
+  const client = await writeClient();
+  const row = payload as never;
+  const { error } = id
+    ? await client.from("commission_works").update(row).eq("id", id)
+    : await client.from("commission_works").insert(row);
+  if (error) throw error;
+}
+
+export async function deleteCommissionWork(id: string, imagePath: string) {
+  const client = await writeClient();
+  const { error } = await client.from("commission_works").delete().eq("id", id);
+  if (error) throw error;
+  if (imagePath && !/^https?:\/\//i.test(imagePath)) await client.storage.from(BUCKET).remove([imagePath]);
+}
+
 export async function deleteArtwork(id: string, imagePath: string) {
   const client = await writeClient();
   const { error } = await client.from("artworks").delete().eq("id", id);
