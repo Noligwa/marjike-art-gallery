@@ -29,6 +29,13 @@
       "when": 1792964715980,
       "tag": "0003_drop_leftover_public_media_read",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793016021180,
+      "tag": "0004_create_commission_works",
+      "breakpoints": true
     }
   ]
 }
