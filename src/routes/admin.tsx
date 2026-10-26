@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/use-auth";
 import {
   artworksQuery,
+  commissionWorksQuery,
   isBuiltInAuthForced,
   isExternalActive,
   setBuiltInAuthForced,
@@ -16,11 +17,14 @@ import {
   siteContentQuery,
   type Artwork,
   type ArtworkWithUrl,
+  type CommissionWorkWithUrl,
   type SiteContentRow,
 } from "@/lib/gallery";
 import {
   deleteArtwork,
+  deleteCommissionWork,
   saveArtwork,
+  saveCommissionWork,
   updateContent,
   uploadImage,
   uploadMedia,
@@ -320,15 +324,22 @@ function AdminDashboard({
     queryFn: isExternalActive,
   });
   const { data: artworks = [] } = useQuery(artworksQuery(true));
+  const { data: commissionWorks = [] } = useQuery(commissionWorksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingCommission, setEditingCommission] =
+    useState<CommissionWorkWithUrl | null>(null);
+  const [creatingCommission, setCreatingCommission] = useState(false);
 
   const nextOrder =
     artworks.reduce((max, work) => Math.max(max, work.sort_order), 0) + 1;
+  const nextCommissionOrder =
+    commissionWorks.reduce((max, work) => Math.max(max, work.sort_order), 0) + 1;
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["artworks"] });
+    void qc.invalidateQueries({ queryKey: ["commission-works"] });
     void qc.invalidateQueries({ queryKey: ["site-content"] });
   };
 
@@ -427,6 +438,68 @@ function AdminDashboard({
         </div>
       </section>
 
+      <section className="mt-8 rounded-2xl bg-card p-6 ring-1 ring-black/5">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="font-display text-2xl font-medium tracking-tight">
+            Commission works ({commissionWorks.length})
+          </h2>
+          <Button
+            type="button"
+            onClick={() => {
+              setEditingCommission(null);
+              setCreatingCommission(true);
+            }}
+          >
+            Add a piece
+          </Button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {commissionWorks.map((work) => (
+            <div
+              key={work.id}
+              className="flex gap-4 rounded-xl bg-paper p-3 ring-1 ring-black/5"
+            >
+              <img
+                src={work.imageUrl}
+                alt={work.alt_text || work.title}
+                className="size-20 shrink-0 rounded-lg object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-lg">{work.title}</p>
+                <p className="truncate text-sm text-ink/60">
+                  {[work.medium, work.dimensions].filter(Boolean).join(" · ")}
+                </p>
+                {work.price && (
+                  <p className="truncate text-sm text-sun">{work.price}</p>
+                )}
+                <p className="mt-1 text-xs uppercase tracking-widest text-clay">
+                  #{work.sort_order} ·{" "}
+                  {work.published ? "Published" : "Hidden"}
+                </p>
+                <div className="mt-2 flex gap-3 text-sm">
+                  <button
+                    type="button"
+                    className="text-sun hover:underline"
+                    onClick={() => {
+                      setCreatingCommission(false);
+                      setEditingCommission(work);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <DeleteButton
+                    artwork={work}
+                    kind="commission"
+                    onDone={refresh}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {(creating || editing) && (
         <ArtworkForm
           key={editing?.id ?? "new"}
@@ -435,6 +508,20 @@ function AdminDashboard({
           onClose={() => {
             setCreating(false);
             setEditing(null);
+          }}
+          onSaved={refresh}
+        />
+      )}
+
+      {(creatingCommission || editingCommission) && (
+        <ArtworkForm
+          key={`commission-${editingCommission?.id ?? "new"}`}
+          artwork={editingCommission}
+          nextOrder={nextCommissionOrder}
+          kind="commission"
+          onClose={() => {
+            setCreatingCommission(false);
+            setEditingCommission(null);
           }}
           onSaved={refresh}
         />
@@ -569,9 +656,11 @@ function HeroVideoEditor({
 
 function DeleteButton({
   artwork,
+  kind = "artwork",
   onDone,
 }: {
   artwork: Artwork;
+  kind?: "artwork" | "commission";
   onDone: () => void;
 }) {
   const remove = async () => {
@@ -579,7 +668,11 @@ function DeleteButton({
       return;
     }
     try {
-      await deleteArtwork(artwork.id, artwork.image_path);
+      if (kind === "commission") {
+        await deleteCommissionWork(artwork.id, artwork.image_path);
+      } else {
+        await deleteArtwork(artwork.id, artwork.image_path);
+      }
     } catch (error) {
       toast.error((error as Error).message);
       return;
@@ -600,11 +693,13 @@ function ArtworkForm({
   nextOrder,
   onClose,
   onSaved,
+  kind = "artwork",
 }: {
   artwork: ArtworkWithUrl | null;
   nextOrder: number;
   onClose: () => void;
   onSaved: () => void;
+  kind?: "artwork" | "commission";
 }) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [form, setForm] = useState(() =>

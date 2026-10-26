@@ -7,6 +7,7 @@ import artistPortrait from "@/assets/artist-portrait.jpg";
 import studioVideo from "@/assets/studio-ambient.mp4.asset.json";
 import {
   artworksQuery,
+  commissionWorksQuery,
   signImagePath,
   signMediaPath,
   siteContentQuery,
@@ -68,10 +69,16 @@ const FALLBACK = {
 function Index() {
   const { data: artworks = [], isLoading } = useQuery(artworksQuery());
   const { data: contentRows } = useQuery(siteContentQuery());
+  const { data: commissionWorks = [] } = useQuery(commissionWorksQuery());
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [commissionOpen, setCommissionOpen] = useState<number | null>(null);
 
   const content = { ...FALLBACK, ...toContentMap(contentRows ?? []) };
   const active = openIndex === null ? null : (artworks[openIndex] ?? null);
+  const commissionActive =
+    commissionOpen === null
+      ? null
+      : (commissionWorks[commissionOpen] ?? null);
 
   const { data: portraitUrl } = useQuery({
     queryKey: ["artist-photo", content.artist_photo_path],
@@ -306,7 +313,76 @@ function Index() {
             </a>
           </div>
         </div>
+
+        {commissionWorks.length > 0 && (
+          <div className="mt-20">
+            <div className="mb-12 flex items-end justify-between border-b border-ink/10 pb-5">
+              <h3 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+                Commission works
+              </h3>
+              <span className="text-xs uppercase tracking-[0.2em] text-clay">
+                {commissionWorks.length}{" "}
+                {commissionWorks.length === 1 ? "piece" : "pieces"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-5 sm:gap-6 lg:grid-cols-3">
+              {commissionWorks.map((work, index) => (
+                <button
+                  key={work.id}
+                  type="button"
+                  onClick={() => setCommissionOpen(index)}
+                  className="artwork-card group block rounded-xl bg-card p-3 text-left ring-1 ring-black/5"
+                  aria-label={`Open ${work.title}`}
+                >
+                  <div className="overflow-hidden rounded-[10px]">
+                    <img
+                      src={work.imageUrl}
+                      alt={work.alt_text || work.title}
+                      loading="lazy"
+                      className="aspect-[4/5] w-full object-cover outline-1 -outline-offset-1 outline-black/5 transition-transform duration-700 group-hover:scale-[1.03]"
+                    />
+                  </div>
+                  <div className="px-1 pb-1 pt-4">
+                    <h3 className="font-display text-lg font-medium tracking-tight">
+                      {work.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-ink/60">
+                      {[work.medium, work.dimensions]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    {work.price && (
+                      <p className="mt-2 text-sm font-medium text-sun">
+                        {work.price}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
+
+      {commissionActive && (
+        <Lightbox
+          artwork={commissionActive}
+          onClose={() => setCommissionOpen(null)}
+          onPrev={() =>
+            setCommissionOpen((i) =>
+              i === null
+                ? i
+                : (i - 1 + commissionWorks.length) % commissionWorks.length,
+            )
+          }
+          onNext={() =>
+            setCommissionOpen((i) =>
+              i === null ? i : (i + 1) % commissionWorks.length,
+            )
+          }
+        />
+      )}
 
       <footer className="border-t border-ink/10">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-ink/55 sm:flex-row sm:px-10">

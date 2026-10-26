@@ -62,6 +62,54 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_works: {
+        Row: {
+          alt_text: string
+          created_at: string
+          description: string
+          dimensions: string
+          id: string
+          image_path: string
+          medium: string
+          price: string
+          published: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+          year: string
+        }
+        Insert: {
+          alt_text?: string
+          created_at?: string
+          description?: string
+          dimensions?: string
+          id?: string
+          image_path?: string
+          medium?: string
+          price?: string
+          published?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          year?: string
+        }
+        Update: {
+          alt_text?: string
+          created_at?: string
+          description?: string
+          dimensions?: string
+          id?: string
+          image_path?: string
+          medium?: string
+          price?: string
+          published?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          year?: string
+        }
+        Relationships: []
+      }
       external_db_config: {
         Row: {
           created_at: string
