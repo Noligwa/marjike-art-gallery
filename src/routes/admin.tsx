@@ -738,7 +738,11 @@ function ArtworkForm({
 
       if (!imagePath) throw new Error("Please choose an image.");
 
-      await saveArtwork({ ...form, image_path: imagePath }, artwork?.id);
+      if (kind === "commission") {
+        await saveCommissionWork({ ...form, image_path: imagePath }, artwork?.id);
+      } else {
+        await saveArtwork({ ...form, image_path: imagePath }, artwork?.id);
+      }
     },
     onSuccess: () => {
       toast.success(artwork ? "Piece updated." : "Piece added.");
