@@ -324,7 +324,10 @@ function AdminDashboard({
     queryFn: isExternalActive,
   });
   const { data: artworks = [] } = useQuery(artworksQuery(true));
-  const { data: commissionWorks = [] } = useQuery(commissionWorksQuery(true));
+  const {
+    data: commissionWorks = [],
+    error: commissionError,
+  } = useQuery(commissionWorksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
   const [creating, setCreating] = useState(false);
