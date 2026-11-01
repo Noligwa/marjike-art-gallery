@@ -324,7 +324,10 @@ function AdminDashboard({
     queryFn: isExternalActive,
   });
   const { data: artworks = [] } = useQuery(artworksQuery(true));
-  const { data: commissionWorks = [] } = useQuery(commissionWorksQuery(true));
+  const {
+    data: commissionWorks = [],
+    error: commissionError,
+  } = useQuery(commissionWorksQuery(true));
   const { data: contentRows = [] } = useQuery(siteContentQuery());
   const [editing, setEditing] = useState<ArtworkWithUrl | null>(null);
   const [creating, setCreating] = useState(false);
@@ -453,6 +456,18 @@ function AdminDashboard({
             Add a piece
           </Button>
         </div>
+
+        {commissionError &&
+          /could not find the table|does not exist|schema cache/i.test(
+            commissionError.message,
+          ) && (
+            <p className="mt-4 text-sm text-sun">
+              Your own database doesn't hold the commission works yet. Open the{" "}
+              <strong>My database</strong> section below, copy the setup text
+              once more and run it in your project — then this list reads and
+              writes there.
+            </p>
+          )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           {commissionWorks.map((work) => (

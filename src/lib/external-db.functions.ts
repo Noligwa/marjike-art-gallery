@@ -196,7 +196,13 @@ export const provisionExternalDb = createServerFn({ method: "POST" })
     }
 
     const missing: string[] = [];
-    for (const table of ["artworks", "site_content", "user_roles"]) {
+    for (const table of [
+      "artworks",
+      "site_content",
+      "user_roles",
+      "inquiries",
+      "commission_works",
+    ]) {
       const { error } = await client
         .from(table)
         .select("*", { count: "exact", head: true });
