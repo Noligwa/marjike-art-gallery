@@ -468,6 +468,8 @@ function AdminDashboard({
               writes there.
             </p>
           )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
           {commissionWorks.map((work) => (
             <div
               key={work.id}
