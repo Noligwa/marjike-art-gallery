@@ -457,7 +457,17 @@ function AdminDashboard({
           </Button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        {commissionError &&
+          /could not find the table|does not exist|schema cache/i.test(
+            commissionError.message,
+          ) && (
+            <p className="mt-4 text-sm text-sun">
+              Your own database doesn't hold the commission works yet. Open the{" "}
+              <strong>My database</strong> section below, copy the setup text
+              once more and run it in your project — then this list reads and
+              writes there.
+            </p>
+          )}
           {commissionWorks.map((work) => (
             <div
               key={work.id}
