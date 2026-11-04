@@ -1,11 +1,27 @@
 import { supabase } from "@/integrations/supabase/client";
-import { BUCKET, getDataClient, isExternalActive } from "./gallery";
+import {
+  BUCKET,
+  getDataClient,
+  isBuiltInAuthForced,
+  isExternalActive,
+} from "./gallery";
 
-/** Writes go to whichever database is live, as the signed-in studio admin. */
+/** Writes go to whichever database is live, as the signed-in studio admin.
+ *  In rescue mode everything stays on the site's own database. */
 async function writeClient() {
-  return (await isExternalActive())
+  return (await isExternalActive()) && !isBuiltInAuthForced()
     ? await getDataClient()
     : (supabase as unknown as Awaited<ReturnType<typeof getDataClient>>);
+}
+
+/** Turns database security errors into something the studio owner can act on. */
+function friendlyDbError(error: { message: string }) {
+  if (/row-level security|permission denied/i.test(error.message)) {
+    return new Error(
+      "The studio couldn't save this because your login on the database has expired. Sign out and sign in again.",
+    );
+  }
+  return new Error(error.message);
 }
 
 /** Uploads gallery media to whichever database is live, returning its stored path. */
