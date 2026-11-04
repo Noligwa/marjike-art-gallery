@@ -102,7 +102,12 @@ export async function uploadMedia(file: File, path: string): Promise<string> {
   const put = () =>
     client.storage.from(BUCKET).upload(path, file, { contentType: file.type });
   let { error } = await put();
-  if (error && /bucket not found/i.test(error.message) && (await isExternalActive())&& (await isExternalActive()) !isBuiltInAuthForced() && (await isExternalActive())) {
+  if (
+    error &&
+    /bucket not found/i.test(error.message) &&
+    !isBuiltInAuthForced() &&
+    (await isExternalActive())
+  ) {
     // Photo folder missing in the artist's database — create it, then retry.
     const { provisionExternalDb } = await import("./external-db.functions");
     await provisionExternalDb().catch(() => undefined);
