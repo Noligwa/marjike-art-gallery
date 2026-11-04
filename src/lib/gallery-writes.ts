@@ -1,11 +1,27 @@
 import { supabase } from "@/integrations/supabase/client";
-import { BUCKET, getDataClient, isExternalActive } from "./gallery";
+import {
+  BUCKET,
+  getDataClient,
+  isBuiltInAuthForced,
+  isExternalActive,
+} from "./gallery";
 
-/** Writes go to whichever database is live, as the signed-in studio admin. */
+/** Writes go to whichever database is live, as the signed-in studio admin.
+ *  In rescue mode everything stays on the site's own database. */
 async function writeClient() {
-  return (await isExternalActive())
+  return (await isExternalActive()) && !isBuiltInAuthForced()
     ? await getDataClient()
     : (supabase as unknown as Awaited<ReturnType<typeof getDataClient>>);
+}
+
+/** Turns database security errors into something the studio owner can act on. */
+function friendlyDbError(error: { message: string }) {
+  if (/row-level security|permission denied/i.test(error.message)) {
+    return new Error(
+      "The studio couldn't save this because your login on the database has expired. Sign out and sign in again.",
+    );
+  }
+  return new Error(error.message);
 }
 
 /** Uploads gallery media to whichever database is live, returning its stored path. */
@@ -46,7 +62,7 @@ export async function saveStorageSettings(s: StorageSettings) {
   const { error } = await client
     .from("private_settings")
     .upsert(rows as never, { onConflict: "key" });
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
 }
 
 /** Sends a file to the upload script on the artist's web hosting; returns its web address. */
@@ -86,13 +102,18 @@ export async function uploadMedia(file: File, path: string): Promise<string> {
   const put = () =>
     client.storage.from(BUCKET).upload(path, file, { contentType: file.type });
   let { error } = await put();
-  if (error && /bucket not found/i.test(error.message) && (await isExternalActive())) {
+  if (
+    error &&
+    /bucket not found/i.test(error.message) &&
+    !isBuiltInAuthForced() &&
+    (await isExternalActive())
+  ) {
     // Photo folder missing in the artist's database — create it, then retry.
     const { provisionExternalDb } = await import("./external-db.functions");
     await provisionExternalDb().catch(() => undefined);
     ({ error } = await put());
   }
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
   return path;
 }
 
@@ -107,7 +128,7 @@ export async function saveArtwork(
   const { error } = id
     ? await client.from("artworks").update(row).eq("id", id)
     : await client.from("artworks").insert(row);
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
 }
 
 export async function saveCommissionWork(
@@ -119,20 +140,20 @@ export async function saveCommissionWork(
   const { error } = id
     ? await client.from("commission_works").update(row).eq("id", id)
     : await client.from("commission_works").insert(row);
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
 }
 
 export async function deleteCommissionWork(id: string, imagePath: string) {
   const client = await writeClient();
   const { error } = await client.from("commission_works").delete().eq("id", id);
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
   if (imagePath && !/^https?:\/\//i.test(imagePath)) await client.storage.from(BUCKET).remove([imagePath]);
 }
 
 export async function deleteArtwork(id: string, imagePath: string) {
   const client = await writeClient();
   const { error } = await client.from("artworks").delete().eq("id", id);
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
   if (imagePath && !/^https?:\/\//i.test(imagePath)) await client.storage.from(BUCKET).remove([imagePath]);
 }
 
@@ -141,5 +162,5 @@ export async function updateContent(key: string, value: string) {
   const { error } = await client
     .from("site_content")
     .upsert({ key, value }, { onConflict: "key" });
-  if (error) throw error;
+  if (error) throw friendlyDbError(error);
 }

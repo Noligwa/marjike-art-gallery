@@ -58,6 +58,9 @@ export function setBuiltInAuthForced(on: boolean) {
 
 /** The Supabase client the gallery reads through — built-in or the artist's. */
 export async function getDataClient(): Promise<SupabaseClient> {
+  // Rescue login reads and writes the site's own database, so the studio keeps
+  // working as one coherent place even while the artist's database is live.
+  if (isBuiltInAuthForced()) return supabase as unknown as SupabaseClient;
   const target = await getDbTarget();
   if (!target.active) return supabase as unknown as SupabaseClient;
   if (!externalClient) {
@@ -77,7 +80,6 @@ export async function getDataClient(): Promise<SupabaseClient> {
  * live, accounts and passwords live there too — unless the rescue login is on.
  */
 export async function getAuthClient(): Promise<SupabaseClient> {
-  if (isBuiltInAuthForced()) return supabase as unknown as SupabaseClient;
   return getDataClient();
 }
 
