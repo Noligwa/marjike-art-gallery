@@ -327,56 +327,46 @@ function Index() {
             </a>
           </div>
         </div>
+      </section>
 
-        {commissionWorks.length > 0 && (
-          <div className="mt-20">
-            <div className="mb-12 flex items-end justify-between border-b border-ink/10 pb-5">
-              <h3 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
-                Commission works
-              </h3>
-              <span className="text-xs uppercase tracking-[0.2em] text-clay">
-                {commissionWorks.length}{" "}
-                {commissionWorks.length === 1 ? "piece" : "pieces"}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-5 sm:gap-6 lg:grid-cols-3">
-              {commissionWorks.map((work, index) => (
-                <button
-                  key={work.id}
-                  type="button"
-                  onClick={() => setCommissionOpen(index)}
-                  className="artwork-card group block rounded-xl bg-card p-3 text-left ring-1 ring-black/5"
-                  aria-label={`Open ${work.title}`}
-                >
-                  <div className="overflow-hidden rounded-[10px]">
-                    <img
-                      src={work.imageUrl}
-                      alt={work.alt_text || work.title}
-                      loading="lazy"
-                      className="aspect-[4/5] w-full object-cover outline-1 -outline-offset-1 outline-black/5 transition-transform duration-700 group-hover:scale-[1.03]"
-                    />
-                  </div>
-                  <div className="px-1 pb-1 pt-4">
-                    <h3 className="font-display text-lg font-medium tracking-tight">
-                      {work.title}
-                    </h3>
-                    <p className="mt-1 text-sm text-ink/60">
-                      {[work.medium, work.dimensions]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {work.price && (
-                      <p className="mt-2 text-sm font-medium text-sun">
-                        {work.price}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              ))}
+      {/* About */}
+      <section id="about" className="bg-card">
+        <div className="mx-auto max-w-[1200px] px-6 py-24 sm:px-10">
+          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <figure className="artwork-card mx-auto max-w-[420px] rounded-xl bg-paper p-3 ring-1 ring-black/5 lg:mx-0">
+              <img
+                src={portraitUrl || artistPortrait}
+                alt={content.artist_photo_alt}
+                width={1024}
+                height={1280}
+                loading="lazy"
+                className="aspect-[4/5] w-full rounded-[10px] object-cover outline-1 -outline-offset-1 outline-black/5"
+              />
+              <figcaption className="px-1 pb-1 pt-4">
+                <h3 className="font-display text-lg font-medium tracking-tight">
+                  {content.artist_photo_name}
+                </h3>
+                <p className="mt-1 text-sm text-ink/60">
+                  {content.artist_photo_caption}
+                </p>
+              </figcaption>
+            </figure>
+            <div>
+              <p className="mb-6 text-xs uppercase tracking-[0.3em] text-sun">
+                About the artist
+              </p>
+              <h2 className="max-w-[30ch] font-display text-4xl font-medium leading-[1.08] tracking-tight text-balance sm:text-5xl">
+                {content.about_title}
+              </h2>
+              <p className="mt-6 text-base leading-relaxed text-ink/70 text-pretty sm:text-lg">
+                {content.about_body_1}
+              </p>
+              <p className="mt-5 text-base leading-relaxed text-ink/70 text-pretty sm:text-lg">
+                {content.about_body_2}
+              </p>
             </div>
           </div>
-        )}
+        </div>
       </section>
 
       {commissionActive && (
